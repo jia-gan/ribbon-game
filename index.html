@@ -592,20 +592,16 @@ const alphabet = {
     }
   },
   'C': {
-    pathLen: (s) => Math.PI * s * 0.85 * 1.36,
-    endpoints: (cx, cy, s) => {
-      const r = s * 0.85;
-      const a = Math.PI * 0.32;
-      return [
-        { x: cx + r * Math.cos(-a), y: cy + r * Math.sin(-a) },
-        { x: cx + r * Math.cos(a),  y: cy + r * Math.sin(a) }
-      ];
-    },
+    pathLen: (s) => s * 4.25,
+    endpoints: (cx, cy, s) => [
+      { x: cx + s * 0.58, y: cy - s * 0.62 },
+      { x: cx + s * 0.58, y: cy + s * 0.62 }
+    ],
     drawPath: (c, cx, cy, s) => {
-      const r = s * 0.85;
-      const a = Math.PI * 0.32;
       c.beginPath();
-      c.arc(cx, cy, r, a, -a, true);
+      c.moveTo(cx + s * 0.58, cy - s * 0.62);
+      c.bezierCurveTo(cx + s * 0.1, cy - s * 0.96, cx - s * 0.78, cy - s * 0.82, cx - s * 0.78, cy);
+      c.bezierCurveTo(cx - s * 0.78, cy + s * 0.82, cx + s * 0.1, cy + s * 0.96, cx + s * 0.58, cy + s * 0.62);
     }
   },
   'S': {
