@@ -1339,6 +1339,7 @@ const game = {
   wordPassedFlags: null,
   // 共享
   score: 0,
+  scoreDetail: null,
   holdTime: 0,
   hasInteracted: false,
   passed: false,
@@ -1377,6 +1378,17 @@ function starsForScore(score) {
   if (score >= thresholds[1]) return 2;
   if (score >= thresholds[0]) return 1;
   return 0;
+}
+
+const PASS_SCORE = 0.40;
+const PASS_COVERAGE = 0.48;
+const PASS_PRECISION = 0.48;
+
+function isPassingScore() {
+  const detail = game.scoreDetail || { coverage: 0, precision: 0 };
+  return game.score >= PASS_SCORE &&
+    detail.coverage >= PASS_COVERAGE &&
+    detail.precision >= PASS_PRECISION;
 }
 
 function letterCenter() {
@@ -1593,8 +1605,17 @@ function computeScore() {
     if (r) rArea++;
     if (t && r) inter++;
   }
-  if (tArea === 0 || rArea === 0) return 0;
-  return inter / (tArea + rArea - inter);  // IoU
+  if (tArea === 0 || rArea === 0) {
+    game.scoreDetail = { iou: 0, coverage: 0, precision: 0 };
+    return 0;
+  }
+  const iou = inter / (tArea + rArea - inter);
+  const coverage = inter / tArea;   // 目标被盖住多少
+  const precision = inter / rArea;  // 毛毛虫有多少贴在目标上
+  game.scoreDetail = { iou, coverage, precision };
+
+  // 更像人眼的评分：既要覆盖目标，也不能把线甩到目标外。
+  return Math.min(coverage, precision) * 0.55 + iou * 0.45;
 }
 
 // 调试小窗：右下角显示目标（黄）/ 当前带子（青）/ 重叠（亮白）
@@ -1655,7 +1676,7 @@ function drawDebugMask() {
 
   // 右上角实时分数（达标变绿）
   const pct = Math.round(game.score * 100);
-  const passing = game.score >= 0.4;
+  const passing = isPassingScore();
   ctx.fillStyle = passing ? '#2ed573' : '#ffa502';
   ctx.font = '700 16px -apple-system, "Segoe UI", system-ui, sans-serif';
   ctx.textAlign = 'right';
@@ -1693,8 +1714,7 @@ function updateGame(dt) {
   if (game.passed || game.ended) return;
   renderRibbonMask();
   game.score = computeScore();
-  const passThreshold = 0.40;
-  if (game.hasInteracted && game.score >= passThreshold) {
+  if (game.hasInteracted && isPassingScore()) {
     game.holdTime += dt;
     if (game.holdTime >= 0.5) {
       game.passed = true;
