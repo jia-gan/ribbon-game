@@ -574,21 +574,17 @@ const alphabet = {
     }
   },
   'U': {
-    pathLen: (s) => 2 * s * 0.95 + Math.PI * s * 0.6,
-    endpoints: (cx, cy, s) => {
-      const r = s * 0.6;
-      return [
-        { x: cx - r, y: cy - s * 0.85 },
-        { x: cx + r, y: cy - s * 0.85 }
-      ];
-    },
+    pathLen: (s) => s * 3.9,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.62, y: cy - s * 0.85 },
+      { x: cx + s * 0.62, y: cy - s * 0.85 }
+    ],
     drawPath: (c, cx, cy, s) => {
-      const r = s * 0.6;
       c.beginPath();
-      c.moveTo(cx - r, cy - s * 0.85);
-      c.lineTo(cx - r, cy + s * 0.25);
-      c.arc(cx, cy + s * 0.25, r, Math.PI, 0, false);
-      c.lineTo(cx + r, cy - s * 0.85);
+      c.moveTo(cx - s * 0.62, cy - s * 0.85);
+      c.lineTo(cx - s * 0.62, cy + s * 0.22);
+      c.bezierCurveTo(cx - s * 0.62, cy + s * 0.88, cx + s * 0.62, cy + s * 0.88, cx + s * 0.62, cy + s * 0.22);
+      c.lineTo(cx + s * 0.62, cy - s * 0.85);
     }
   },
   'C': {
@@ -605,19 +601,17 @@ const alphabet = {
     }
   },
   'S': {
-    pathLen: (s) => Math.PI * s * 0.5 * 2,
-    endpoints: (cx, cy, s) => {
-      const r = s * 0.45;
-      return [
-        { x: cx + r * 0.85, y: cy - s + r },
-        { x: cx - r * 0.85, y: cy + s - r }
-      ];
-    },
+    pathLen: (s) => s * 4.15,
+    endpoints: (cx, cy, s) => [
+      { x: cx + s * 0.58, y: cy - s * 0.62 },
+      { x: cx - s * 0.58, y: cy + s * 0.62 }
+    ],
     drawPath: (c, cx, cy, s) => {
-      const r = s * 0.45;
       c.beginPath();
-      c.arc(cx, cy - s + r, r, -Math.PI * 0.15, Math.PI, false);
-      c.arc(cx, cy + s - r, r, 0, Math.PI * 1.15, true);
+      c.moveTo(cx + s * 0.58, cy - s * 0.62);
+      c.bezierCurveTo(cx + s * 0.3, cy - s * 0.96, cx - s * 0.64, cy - s * 0.9, cx - s * 0.58, cy - s * 0.34);
+      c.bezierCurveTo(cx - s * 0.52, cy + s * 0.08, cx + s * 0.56, cy - s * 0.03, cx + s * 0.56, cy + s * 0.38);
+      c.bezierCurveTo(cx + s * 0.56, cy + s * 0.94, cx - s * 0.32, cy + s * 0.94, cx - s * 0.58, cy + s * 0.62);
     }
   },
   'V': {
@@ -675,24 +669,16 @@ const alphabet = {
     }
   },
   'O': {
-    pathLen: (s) => Math.PI * s * 1.5,
+    pathLen: (s) => Math.PI * s * 1.65,
     endpoints: (cx, cy, s) => [
-      { x: cx - 8, y: cy + s * 0.85 },
-      { x: cx + 8, y: cy + s * 0.85 }
+      { x: cx - s * 0.08, y: cy + s * 0.85 },
+      { x: cx + s * 0.08, y: cy + s * 0.85 }
     ],
     drawPath: (c, cx, cy, s) => {
       c.beginPath();
-      c.moveTo(cx - 8, cy + s * 0.85);
-      c.bezierCurveTo(
-        cx - s * 0.85, cy + s * 0.5,
-        cx - s * 0.85, cy - s * 0.5,
-        cx, cy - s * 0.85
-      );
-      c.bezierCurveTo(
-        cx + s * 0.85, cy - s * 0.5,
-        cx + s * 0.85, cy + s * 0.5,
-        cx + 8, cy + s * 0.85
-      );
+      c.moveTo(cx - s * 0.08, cy + s * 0.85);
+      c.bezierCurveTo(cx - s * 0.82, cy + s * 0.78, cx - s * 0.86, cy - s * 0.78, cx, cy - s * 0.85);
+      c.bezierCurveTo(cx + s * 0.86, cy - s * 0.78, cx + s * 0.82, cy + s * 0.78, cx + s * 0.08, cy + s * 0.85);
     }
   },
   'M': {
@@ -953,7 +939,7 @@ const alphabet = {
 // 游戏状态
 // ============================================================
 const INITIAL_PINS = 26;
-const ALL_LETTERS = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'.split('');
+const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 // 单词模式会自动过滤：只用已经定义路径且有中文释义的词。
 const WORD_LIST = [
   'IN', 'IT', 'IS', 'ON', 'NO', 'TO', 'DO', 'SO', 'UP', 'US',
@@ -1296,8 +1282,8 @@ let wordDeck = [];
 let lastWordRun = [];
 
 function buildLetterRun() {
-  // I 永远首关当教学（钉子 0 颗就能过），其余 15 字母洗牌
-  const rest = shuffleList(ALL_LETTERS);
+  // I 永远首关当教学，其余字母洗牌。
+  const rest = shuffleList(ALL_LETTERS.filter(ch => ch !== 'I'));
   return { letters: ['I', ...rest] };
 }
 
