@@ -1515,14 +1515,17 @@ function showEndScreen() {
 const MASK_SCALE = 0.13;  // mask = 屏幕的 13% 分辨率（等比，避免变形）
 let MASK_W = 1, MASK_H = 1;
 const targetMask = document.createElement('canvas');
+const allowedMask = document.createElement('canvas');
 const ribbonMask = document.createElement('canvas');
 const tmCtx = targetMask.getContext('2d', { willReadFrequently: true });
+const amCtx = allowedMask.getContext('2d', { willReadFrequently: true });
 const rmCtx = ribbonMask.getContext('2d', { willReadFrequently: true });
 
 function syncMaskSize() {
   MASK_W = Math.max(60, Math.round(W * MASK_SCALE));
   MASK_H = Math.max(45, Math.round(H * MASK_SCALE));
   targetMask.width = MASK_W; targetMask.height = MASK_H;
+  allowedMask.width = MASK_W; allowedMask.height = MASK_H;
   ribbonMask.width = MASK_W; ribbonMask.height = MASK_H;
 }
 
@@ -1532,25 +1535,30 @@ const RIBBON_W = 22;
 function renderTargetMask() {
   syncMaskSize();
   tmCtx.clearRect(0, 0, MASK_W, MASK_H);
-  tmCtx.strokeStyle = '#fff';
-  tmCtx.lineWidth = TARGET_W * MASK_SCALE;
-  tmCtx.lineCap = 'round';
-  tmCtx.lineJoin = 'round';
+  amCtx.clearRect(0, 0, MASK_W, MASK_H);
+  for (const c of [tmCtx, amCtx]) {
+    c.strokeStyle = '#fff';
+    c.lineWidth = TARGET_W * MASK_SCALE;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+  }
   if (game.mode === 'word' && game.wordTarget) {
     const positions = game.wordTarget.positions;
     for (let i = 0; i < positions.length; i++) {
       const p = positions[i];
       alphabet[p.ch].drawPath(tmCtx, p.cx * MASK_SCALE, p.cy * MASK_SCALE, p.s * MASK_SCALE);
       tmCtx.stroke();
+      alphabet[p.ch].drawPath(amCtx, p.cx * MASK_SCALE, p.cy * MASK_SCALE, p.s * MASK_SCALE);
+      amCtx.stroke();
       if (i > 0) {
         const prev = positions[i - 1];
         const prevEps = alphabet[prev.ch].endpoints(prev.cx, prev.cy, prev.s);
         const eps = alphabet[p.ch].endpoints(p.cx, p.cy, p.s);
-        // 字母间连接线（也算 target 一部分，鼓励连续书写）
-        tmCtx.beginPath();
-        tmCtx.moveTo(prevEps[1].x * MASK_SCALE, prevEps[1].y * MASK_SCALE);
-        tmCtx.lineTo(eps[0].x * MASK_SCALE, eps[0].y * MASK_SCALE);
-        tmCtx.stroke();
+        // 过渡线只算允许区域，不算要学习的字母目标。
+        amCtx.beginPath();
+        amCtx.moveTo(prevEps[1].x * MASK_SCALE, prevEps[1].y * MASK_SCALE);
+        amCtx.lineTo(eps[0].x * MASK_SCALE, eps[0].y * MASK_SCALE);
+        amCtx.stroke();
       }
     }
   } else {
@@ -1559,6 +1567,10 @@ function renderTargetMask() {
       tmCtx, cx * MASK_SCALE, cy * MASK_SCALE, s * MASK_SCALE
     );
     tmCtx.stroke();
+    alphabet[game.letters[game.letterIdx]].drawPath(
+      amCtx, cx * MASK_SCALE, cy * MASK_SCALE, s * MASK_SCALE
+    );
+    amCtx.stroke();
   }
 }
 
@@ -1576,22 +1588,26 @@ function renderRibbonMask() {
 
 function computeScore() {
   const tData = tmCtx.getImageData(0, 0, MASK_W, MASK_H).data;
+  const aData = amCtx.getImageData(0, 0, MASK_W, MASK_H).data;
   const rData = rmCtx.getImageData(0, 0, MASK_W, MASK_H).data;
-  let inter = 0, tArea = 0, rArea = 0;
+  let targetInter = 0, allowedInter = 0, tArea = 0, aArea = 0, rArea = 0;
   for (let i = 3; i < tData.length; i += 4) {
     const t = tData[i] > 96;
+    const a = aData[i] > 96;
     const r = rData[i] > 96;
     if (t) tArea++;
+    if (a) aArea++;
     if (r) rArea++;
-    if (t && r) inter++;
+    if (t && r) targetInter++;
+    if (a && r) allowedInter++;
   }
   if (tArea === 0 || rArea === 0) {
     game.scoreDetail = { iou: 0, coverage: 0, precision: 0 };
     return 0;
   }
-  const iou = inter / (tArea + rArea - inter);
-  const coverage = inter / tArea;   // 目标被盖住多少
-  const precision = inter / rArea;  // 毛毛虫有多少贴在目标上
+  const iou = allowedInter / ((aArea || tArea) + rArea - allowedInter);
+  const coverage = targetInter / tArea;   // 字母本身被盖住多少
+  const precision = allowedInter / rArea; // 毛毛虫有多少贴在字母或合理过渡线上
   game.scoreDetail = { iou, coverage, precision };
 
   // 更像人眼的评分：既要覆盖目标，也不能把线甩到目标外。
@@ -1770,29 +1786,29 @@ function drawGhost() {
   if (game.mode === 'word' && game.wordTarget) {
     const positions = game.wordTarget.positions;
     const ghostScale = Math.min(1, positions[0].s / (Math.min(W, H) * 0.18));
-    for (let i = 0; i < positions.length; i++) {
+    for (let i = 1; i < positions.length; i++) {
+      const prev = positions[i - 1];
       const p = positions[i];
+      const prevEps = alphabet[prev.ch].endpoints(prev.cx, prev.cy, prev.s);
+      const eps = alphabet[p.ch].endpoints(p.cx, p.cy, p.s);
+      // 连接线只是提示一根带子的走向，不能抢字母本身。
+      ctx.strokeStyle = 'rgba(255,217,61,0.035)';
+      ctx.lineWidth = 18 * ghostScale;
+      ctx.beginPath();
+      ctx.moveTo(prevEps[1].x, prevEps[1].y);
+      ctx.lineTo(eps[0].x, eps[0].y);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 8]);
+      ctx.beginPath();
+      ctx.moveTo(prevEps[1].x, prevEps[1].y);
+      ctx.lineTo(eps[0].x, eps[0].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const p of positions) {
       drawGhostItem(p.ch, p.cx, p.cy, p.s, ghostScale);
-      if (i > 0) {
-        const prev = positions[i - 1];
-        const prevEps = alphabet[prev.ch].endpoints(prev.cx, prev.cy, prev.s);
-        const eps = alphabet[p.ch].endpoints(p.cx, p.cy, p.s);
-        // 连接线虚影
-        ctx.strokeStyle = 'rgba(255,217,61,0.07)';
-        ctx.lineWidth = 30 * ghostScale;
-        ctx.beginPath();
-        ctx.moveTo(prevEps[1].x, prevEps[1].y);
-        ctx.lineTo(eps[0].x, eps[0].y);
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(prevEps[1].x, prevEps[1].y);
-        ctx.lineTo(eps[0].x, eps[0].y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
     }
     // 整带子起止端点（绿头红尾）
     ctx.fillStyle = 'rgba(46,213,115,0.85)';
