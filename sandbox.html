@@ -861,20 +861,18 @@ const alphabet = {
     }
   },
   'G': {
-    pathLen: (s) => Math.PI * s * 0.85 * 1.5 + s * 0.65,
-    endpoints: (cx, cy, s) => {
-      const r = s * 0.85;
-      return [
-        { x: cx + r * 0.75, y: cy - r * 0.62 },
-        { x: cx + s * 0.2, y: cy + s * 0.1 }
-      ];
-    },
+    pathLen: (s) => s * 4.7,
+    endpoints: (cx, cy, s) => [
+      { x: cx + s * 0.62, y: cy - s * 0.52 },
+      { x: cx + s * 0.08, y: cy + s * 0.02 }
+    ],
     drawPath: (c, cx, cy, s) => {
-      const r = s * 0.85;
       c.beginPath();
-      c.arc(cx, cy, r, -Math.PI * 0.25, Math.PI * 1.45, true);
-      c.lineTo(cx + s * 0.55, cy + s * 0.1);
-      c.lineTo(cx + s * 0.2, cy + s * 0.1);
+      c.moveTo(cx + s * 0.62, cy - s * 0.52);
+      c.bezierCurveTo(cx + s * 0.1, cy - s * 0.95, cx - s * 0.78, cy - s * 0.78, cx - s * 0.78, cy);
+      c.bezierCurveTo(cx - s * 0.78, cy + s * 0.8, cx - s * 0.04, cy + s * 0.98, cx + s * 0.55, cy + s * 0.55);
+      c.bezierCurveTo(cx + s * 0.86, cy + s * 0.32, cx + s * 0.82, cy + s * 0.02, cx + s * 0.46, cy + s * 0.02);
+      c.lineTo(cx + s * 0.08, cy + s * 0.02);
     }
   },
   'H': {
