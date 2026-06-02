@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ribbon-game
+    runtime: static
+    staticPublishPath: .
+    buildCommand: ""

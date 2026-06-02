@@ -1,0 +1,2666 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="毛毛虫">
+<meta name="theme-color" content="#0a0e14">
+<link rel="manifest" href='data:application/manifest+json,{"name":"毛毛虫字母","short_name":"毛毛虫","start_url":".","display":"fullscreen","orientation":"any","background_color":"%230a0e14","theme_color":"%230a0e14"}'>
+<title>毛毛虫字母 · 把带子拗成字母</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, #1a2332 0%, #0a0e14 100%);
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  canvas { display: block; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .panel {
+    position: fixed; top: 16px; left: 16px;
+    z-index: 20;
+    background: rgba(15, 20, 25, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    min-width: 220px;
+  }
+  .panel h3 { margin: 0 0 10px 0; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; }
+  .panel label { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; font-size: 11.5px; color: #adbac7; }
+  .panel label > span:last-child { color: #58a6ff; font-variant-numeric: tabular-nums; min-width: 32px; text-align: right; }
+  .panel input[type=range] {
+    width: 110px; vertical-align: middle; margin: 0 6px;
+    accent-color: #58a6ff;
+  }
+  .panel select {
+    background: rgba(255,255,255,0.06);
+    color: #e6edf3;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .panel .check { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #adbac7; cursor: pointer; }
+  .panel button {
+    background: #238636; color: white; border: 0;
+    padding: 7px 14px; border-radius: 5px;
+    cursor: pointer; margin-top: 10px; width: 100%;
+    font-size: 12px; font-weight: 500;
+  }
+  .panel button:hover { background: #2ea043; }
+  .hint {
+    position: fixed; bottom: 16px; left: 16px; right: 16px;
+    text-align: center;
+    font-size: 11.5px; color: #6e7681;
+    pointer-events: none;
+  }
+  .hint kbd {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: inherit;
+    color: #adbac7;
+  }
+  .hud {
+    position: fixed; top: 16px; left: 50%;
+    z-index: 10;
+    transform: translateX(-50%);
+    background: rgba(15,20,25,0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 18px 12px;
+    text-align: center;
+    min-width: 280px;
+    transition: background 0.3s ease, transform 0.3s ease;
+  }
+  .hud.hidden { display: none; }
+  .hud-prompt { font-size: 12.5px; color: #adbac7; }
+  .hud-letter {
+    font-size: 36px; font-weight: 800;
+    color: #ffd93d;
+    margin-left: 8px; vertical-align: middle;
+    font-family: Georgia, "Times New Roman", serif;
+    letter-spacing: 1px;
+    text-shadow: 0 0 14px rgba(255,217,61,0.4);
+  }
+  .hud-bar {
+    height: 6px; background: rgba(255,255,255,0.08);
+    border-radius: 3px; overflow: hidden;
+    margin: 8px 0 4px;
+  }
+  .hud-bar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(to right, #ff4757, #ffa502, #ffd93d, #2ed573);
+    transition: width 0.12s ease-out;
+  }
+  .hud-meta {
+    font-size: 11px; color: #6e7681;
+    display: flex; justify-content: space-between;
+    margin-top: 2px;
+  }
+  .hud-meta b { color: #adbac7; font-weight: 600; }
+  .hud-actions { margin-top: 8px; display: flex; gap: 6px; justify-content: center; }
+  .hud-actions button {
+    background: rgba(255,255,255,0.08);
+    color: #adbac7;
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 4px 12px; border-radius: 4px;
+    cursor: pointer; font-size: 11.5px;
+    font-family: inherit;
+  }
+  .hud-actions button:hover { background: rgba(255,255,255,0.16); color: #fff; }
+  .hud.passed {
+    background: rgba(46, 213, 115, 0.85);
+    border-color: rgba(255,255,255,0.3);
+    transform: translateX(-50%) scale(1.06);
+  }
+  .hud.passed .hud-prompt,
+  .hud.passed .hud-meta,
+  .hud.passed .hud-meta b { color: #fff; }
+  .hud.passed .hud-letter { color: #fff; text-shadow: 0 0 16px rgba(255,255,255,0.6); }
+  .mode-tabs {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .mode-tab {
+    background: rgba(255,255,255,0.05);
+    color: #6e7681;
+    border: 1px solid rgba(255,255,255,0.08);
+    min-width: 76px; min-height: 34px;
+    padding: 7px 20px; border-radius: 7px;
+    cursor: pointer; font-size: 14px; font-weight: 700;
+    font-family: inherit;
+  }
+  .mode-tab.active {
+    background: rgba(255,217,61,0.15);
+    border-color: rgba(255,217,61,0.45);
+    color: #ffd93d;
+  }
+  .mode-tab:hover { color: #fff; }
+  .hud-word {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 30px; font-weight: 800;
+    letter-spacing: 7px;
+    margin-left: 6px;
+    display: inline-block;
+  }
+  .hud-word .word-done { color: #2ed573; opacity: 0.75; }
+  .hud-word .word-cur {
+    color: #ffd93d;
+    text-shadow: 0 0 14px rgba(255,217,61,0.55);
+  }
+  .hud-word .word-future { color: rgba(255,255,255,0.28); }
+  .hud.passed .hud-word .word-cur { color: #fff; }
+  .word-meaning {
+    display: inline-flex; align-items: center;
+    margin-left: 8px; padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255,217,61,0.12);
+    border: 1px solid rgba(255,217,61,0.28);
+    color: #ffd93d;
+    font-size: 12px; font-weight: 650;
+    letter-spacing: 0;
+    vertical-align: middle;
+  }
+  .hud.passed .word-meaning {
+    color: #fff;
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.14);
+  }
+  .hud-stats {
+    display: flex; justify-content: space-around; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px; color: #adbac7;
+  }
+  .hud-stats b {
+    color: #fff; font-weight: 700;
+    font-size: 15px; margin: 0 3px;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+  }
+  .hud-stats .pin-low b { color: #ff4757; }
+  @keyframes pinFlash {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.4); color: #ff4757 !important; }
+  }
+  .hud-stats .flash b { animation: pinFlash 0.4s ease; }
+  .end-screen {
+    position: fixed; inset: 0;
+    background: rgba(10,14,20,0.82);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .end-screen.hidden { display: none; }
+  .end-card {
+    background: rgba(22,28,38,0.96);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 32px 48px; border-radius: 14px;
+    text-align: center;
+    min-width: 320px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+    animation: endIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  @keyframes endIn {
+    from { opacity: 0; transform: scale(0.85) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .end-card .end-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; color: #ffd93d; letter-spacing: 1px; }
+  .end-card.win .end-title { color: #2ed573; }
+  .end-card .end-sub { font-size: 13px; color: #8b95a3; margin-bottom: 22px; }
+  .end-card .end-stats { display: flex; gap: 32px; justify-content: center; margin-bottom: 24px; }
+  .end-card .end-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .end-card .end-stat b { font-size: 32px; color: #fff; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .end-card.win .end-stat b { color: #2ed573; }
+  .end-card .end-stat span { font-size: 11px; color: #6e7681; }
+  .end-card button {
+    background: #238636; color: white; border: 0;
+    padding: 10px 32px; border-radius: 6px;
+    cursor: pointer; font-size: 13px; font-weight: 500;
+    font-family: inherit;
+  }
+  .end-card button:hover { background: #2ea043; }
+
+  /* ============ 触屏 / 平板适配 ============ */
+  @media (pointer: coarse), (max-width: 900px) {
+    .panel {
+      top: env(safe-area-inset-top, 10px); left: 10px;
+      padding: 8px 10px; min-width: 0;
+      max-width: 44px; max-height: 44px;
+      overflow: hidden;
+      transition: max-width 0.3s ease, max-height 0.3s ease, padding 0.3s ease;
+    }
+    .panel.open { max-width: 280px; max-height: 600px; padding: 14px 18px; }
+    .panel h3 { font-size: 0; margin: 0; }
+    .panel h3::before { content: "⚙"; font-size: 22px; display: block; text-align: center; line-height: 28px; }
+    .panel.open h3 { font-size: 13px; margin-bottom: 10px; text-align: left; }
+    .panel.open h3::before { content: ""; }
+    .panel > *:not(h3) { display: none; }
+    .panel.open > *:not(h3) { display: block; }
+    .panel.open label { display: flex; }
+    .panel.open .check { display: flex; }
+
+    .hud {
+      top: env(safe-area-inset-top, 10px);
+      padding: 10px 18px 12px;
+      min-width: 300px;
+      border-radius: 14px;
+    }
+    .hud-prompt { font-size: 14px; }
+    .hud-letter { font-size: 44px; }
+    .hud-word { font-size: 36px; letter-spacing: 9px; }
+    .hud-meta { font-size: 12px; }
+    .hud-stats { font-size: 14px; padding-top: 10px; }
+    .hud-stats b { font-size: 17px; }
+    .hud-actions { gap: 10px; margin-top: 10px; }
+    .hud-actions button { padding: 9px 18px; font-size: 13.5px; border-radius: 6px; }
+    .mode-tab { min-width: 82px; min-height: 38px; padding: 8px 22px; font-size: 14px; border-radius: 7px; }
+
+    .hint {
+      bottom: max(10px, env(safe-area-inset-bottom, 10px));
+      font-size: 11.5px;
+      padding: 0 10px;
+    }
+
+    .end-card { padding: 28px 36px; min-width: 280px; }
+    .end-card .end-title { font-size: 24px; }
+    .end-card .end-stat b { font-size: 30px; }
+    .end-card button { padding: 12px 36px; font-size: 14px; }
+  }
+
+  /* 窄屏（手机竖屏）：进一步紧凑 */
+  @media (max-width: 540px) {
+    .hud { min-width: 0; left: 60px; right: 8px; transform: none; padding: 7px 10px 8px; border-radius: 10px; }
+    .hud.passed { transform: scale(1.03); }
+    .mode-tabs { gap: 8px; margin-bottom: 6px; }
+    .mode-tab { min-width: 76px; min-height: 36px; padding: 7px 16px; font-size: 14px; border-radius: 7px; }
+    .hud-prompt { font-size: 12px; white-space: nowrap; }
+    .hud-letter { font-size: 30px; margin-left: 5px; }
+    .hud-word { font-size: 22px; letter-spacing: 4px; }
+    .word-meaning { margin-left: 5px; padding: 1px 6px; font-size: 11px; }
+    .hud-bar { height: 5px; margin: 5px 0 3px; }
+    .hud-meta { font-size: 10px; }
+    .hud-stats { font-size: 11px; margin-top: 5px; padding-top: 5px; }
+    .hud-stats b { font-size: 14px; margin: 0 2px; }
+    .hud-actions { margin-top: 6px; gap: 6px; }
+    .hud-actions button { padding: 6px 10px; font-size: 11px; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="panel" id="panel">
+  <h3 onclick="document.getElementById('panel').classList.toggle('open')">🐛 字母毛毛虫</h3>
+  <label>风格 <select id="style">
+    <option value="worm" selected>🐛 毛毛虫糖</option>
+    <option value="rainbow">🎀 彩虹带</option>
+    <option value="bead">🍬 糖豆串</option>
+    <option value="pencil">✏️ 铅笔线</option>
+    <option value="neon">💡 霓虹灯管</option>
+  </select></label>
+  <label class="check"><input id="trail" type="checkbox"> 显示轨迹残影</label>
+  <label class="check"><input id="debugPreview" type="checkbox"> 显示匹配预览</label>
+  <button onclick="resetRibbon()">↺ 重新摆带子</button>
+</div>
+
+<div id="hud" class="hud">
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="modeTabLetter" onclick="setMode('letter')">字母</button>
+    <button class="mode-tab" id="modeTabWord" onclick="setMode('word')">单词</button>
+  </div>
+  <div class="hud-prompt" id="hudPrompt">把毛毛虫拗成 <span id="hudLetter" class="hud-letter">U</span></div>
+  <div class="hud-bar"><div id="hudFill" class="hud-bar-fill"></div></div>
+  <div class="hud-meta">
+    <span>相似度 <b id="hudScore">0%</b></span>
+    <span>过关 <b id="hudThreshold">40%</b> · 持续 <b>0.5s</b></span>
+  </div>
+  <div class="hud-stats">
+    <span id="hudPinWrap">📌 钉子 <b id="hudPins">26</b></span>
+    <span id="hudStarWrap">⭐ 星星 <b id="hudStars">0</b></span>
+    <span id="hudLevelsWrap">🏆 已过 <b id="hudLevels">0/16</b> 关</span>
+  </div>
+  <div class="hud-actions">
+    <button onclick="skipLetter()">跳过 →</button>
+    <button onclick="restartGame()">↺ 重玩</button>
+  </div>
+</div>
+
+<div id="endScreen" class="end-screen hidden">
+  <div id="endCard" class="end-card">
+    <div id="endTitle" class="end-title">游戏结束</div>
+    <div id="endSub" class="end-sub">钉子还剩 0 颗</div>
+    <div class="end-stats">
+      <div class="end-stat"><b id="endLevels">0</b><span>已过关</span></div>
+      <div class="end-stat"><b id="endStars">0</b><span>星星</span></div>
+      <div class="end-stat"><b id="endTotal">16</b><span>总关数</span></div>
+    </div>
+    <button onclick="restartGame()">再来一局</button>
+  </div>
+</div>
+
+<div class="hint">点 = 钉点 · 拖 = 拽住一段 · 点已钉处 = 解开（钉子返还） · 字母 40% / 单词 30% 持续 0.5s 过关</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+addEventListener('resize', () => { resize(); resetRibbon(); });
+
+let N = 90;            // 字母模式：90 粒子；单词模式按总长动态调整
+let parts = [];
+let segLen = 0;
+
+// 按目标路径总长选粒子数，让 segLen 控制在 18-22px（接近 RIBBON_W，覆盖更平滑）
+function chooseN(totalLen) {
+  const desired = Math.round(totalLen / 20);
+  return Math.max(60, Math.min(360, desired));
+}
+
+function makeSugars() {
+  const sugars = [];
+  const count = Math.random() < 0.6 ? 1 : 2;
+  for (let s = 0; s < count; s++) {
+    sugars.push({
+      nOff: (Math.random() - 0.5) * 1.6,
+      aOff: (Math.random() - 0.5) * 0.8,
+      size: 0.7 + Math.random() * 1.3,
+      alpha: 0.55 + Math.random() * 0.4,
+      tint: Math.random()
+    });
+  }
+  return sugars;
+}
+
+// 把带子粒子从 a 到 b 重排（带轻微弓形避免共线退化），并设置端点锚点
+function layoutLine(a, b, totalLen) {
+  N = chooseN(totalLen);
+  parts = [];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  // 弓形偏移：让带子有 sag 让用户能直观看到松弛量
+  const bow = Math.max(8, totalLen - len) * 0.5;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const sag = Math.sin(t * Math.PI) * bow;
+    const x = a.x + dx * t + nx * sag;
+    const y = a.y + dy * t + ny * sag;
+    parts.push({ x, y, ox: x, oy: y, px: x, py: y, pinned: false, sugars: makeSugars() });
+  }
+  parts[0].x = a.x; parts[0].y = a.y; parts[0].ox = a.x; parts[0].oy = a.y; parts[0].px = a.x; parts[0].py = a.y;
+  parts[N-1].x = b.x; parts[N-1].y = b.y; parts[N-1].ox = b.x; parts[N-1].oy = b.y; parts[N-1].px = b.x; parts[N-1].py = b.y;
+  segLen = totalLen / (N - 1);
+}
+
+function findNearestPinnable(x, y, maxD = 38) {
+  let bestI = -1, bestD = maxD;
+  for (let i = 3; i < N - 3; i++) {  // 端点和邻近粒子不能钉
+    const d = Math.hypot(parts[i].x - x, parts[i].y - y);
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  return bestI;
+}
+
+// 优先解钉：附近有已钉粒子就选它（解钉容忍度更大），没有再选最近粒子放新钉
+function findToggleTarget(x, y) {
+  const UNPIN_RADIUS = 48;
+  let bestPinI = -1, bestPinD = UNPIN_RADIUS;
+  for (let i = 3; i < N - 3; i++) {
+    if (!parts[i].pinned) continue;
+    const d = Math.hypot(parts[i].x - x, parts[i].y - y);
+    if (d < bestPinD) { bestPinD = d; bestPinI = i; }
+  }
+  if (bestPinI >= 0) return bestPinI;
+  return findNearestPinnable(x, y);
+}
+
+const pinBursts = [];
+const passBursts = [];
+
+function burstAt(x, y, type = 'pin') {
+  const palette = type === 'pass'
+    ? candyColors
+    : ['#fff', '#ffd93d', '#2ed573'];
+  const count = type === 'pass' ? 44 : 14;
+  const power = type === 'pass' ? 4.2 : 2.2;
+  const life = type === 'pass' ? 0.95 : 0.42;
+  const list = type === 'pass' ? passBursts : pinBursts;
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = (0.45 + Math.random() * 0.9) * power;
+    list.push({
+      x, y,
+      vx: Math.cos(a) * spd,
+      vy: Math.sin(a) * spd - (type === 'pass' ? 1.1 : 0.4),
+      color: palette[Math.floor(Math.random() * palette.length)],
+      life,
+      age: 0,
+      size: type === 'pass' ? 2.2 + Math.random() * 3.4 : 1.8 + Math.random() * 2.2
+    });
+  }
+}
+
+function placePin(i, x = parts[i].x, y = parts[i].y) {
+  if (i < 3 || i > N - 4 || parts[i].pinned) return false;
+  if (game.pinsLeft <= 0) {
+    flashOutOfPins();
+    return false;
+  }
+  parts[i].pinned = true;
+  parts[i].x = x;
+  parts[i].y = y;
+  parts[i].px = x;
+  parts[i].py = y;
+  parts[i].ox = x;
+  parts[i].oy = y;
+  game.pinsLeft--;
+  burstAt(x, y, 'pin');
+  updateHUD();
+  return true;
+}
+
+function togglePinAt(x, y) {
+  const bestI = findToggleTarget(x, y);
+  if (bestI < 0) return;
+
+  if (parts[bestI].pinned) {
+    // 解钉：返还 1 个库存
+    parts[bestI].pinned = false;
+    game.pinsLeft++;
+    burstAt(parts[bestI].x, parts[bestI].y, 'pin');
+  } else {
+    placePin(bestI);
+    return;
+  }
+  updateHUD();
+}
+
+function flashOutOfPins() {
+  const el = document.getElementById('hudPinWrap');
+  if (!el) return;
+  el.classList.remove('flash');
+  void el.offsetWidth;  // 重置动画
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 500);
+}
+
+function restartGame() {
+  game.pinsLeft = pinsForMode(game.mode);
+  game.levelsCleared = 0;
+  game.starsTotal = 0;
+  game.pendingStars = 0;
+  game.scoreToast = null;
+  game.ended = false;
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  if (game.mode === 'word') {
+    const run = buildWordRun();
+    game.words = run.words;
+    game.wordIdx = 0;
+    game.wordPassedFlags = new Array(game.words.length).fill(false);
+    setWord(game.words[0]);
+  } else {
+    const run = buildLetterRun();
+    game.letters = run.letters;
+    game.letterIdx = 0;
+    game.passedFlags = new Array(game.letters.length).fill(false);
+    setLetter(game.letters[0]);
+  }
+}
+
+function resetRibbon() {
+  if (game.ended) return;
+  if (game.mode === 'word') {
+    setWord(game.words[game.wordIdx]);
+  } else {
+    setLetter(game.letters[game.letterIdx]);
+  }
+}
+
+// ============================================================
+// 字母模板（每个字母：端点 + 描线 path + 路径长度估算）
+// ============================================================
+const alphabet = {
+  'I': {
+    pathLen: (s) => 2 * s,
+    endpoints: (cx, cy, s) => [
+      { x: cx, y: cy - s },
+      { x: cx, y: cy + s }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx, cy - s);
+      c.lineTo(cx, cy + s);
+    }
+  },
+  'L': {
+    pathLen: (s) => s * 1.7 + s * 1.2,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.5, y: cy - s * 0.85 },
+      { x: cx + s * 0.7, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.5, cy - s * 0.85);
+      c.lineTo(cx - s * 0.5, cy + s * 0.85);
+      c.lineTo(cx + s * 0.7, cy + s * 0.85);
+    }
+  },
+  'U': {
+    pathLen: (s) => 2 * s * 0.95 + Math.PI * s * 0.6,
+    endpoints: (cx, cy, s) => {
+      const r = s * 0.6;
+      return [
+        { x: cx - r, y: cy - s * 0.85 },
+        { x: cx + r, y: cy - s * 0.85 }
+      ];
+    },
+    drawPath: (c, cx, cy, s) => {
+      const r = s * 0.6;
+      c.beginPath();
+      c.moveTo(cx - r, cy - s * 0.85);
+      c.lineTo(cx - r, cy + s * 0.25);
+      c.arc(cx, cy + s * 0.25, r, Math.PI, 0, false);
+      c.lineTo(cx + r, cy - s * 0.85);
+    }
+  },
+  'C': {
+    pathLen: (s) => Math.PI * s * 0.85 * 1.36,
+    endpoints: (cx, cy, s) => {
+      const r = s * 0.85;
+      const a = Math.PI * 0.32;
+      return [
+        { x: cx + r * Math.cos(-a), y: cy + r * Math.sin(-a) },
+        { x: cx + r * Math.cos(a),  y: cy + r * Math.sin(a) }
+      ];
+    },
+    drawPath: (c, cx, cy, s) => {
+      const r = s * 0.85;
+      const a = Math.PI * 0.32;
+      c.beginPath();
+      c.arc(cx, cy, r, a, -a, true);
+    }
+  },
+  'S': {
+    pathLen: (s) => Math.PI * s * 0.5 * 2,
+    endpoints: (cx, cy, s) => {
+      const r = s * 0.45;
+      return [
+        { x: cx + r * 0.85, y: cy - s + r },
+        { x: cx - r * 0.85, y: cy + s - r }
+      ];
+    },
+    drawPath: (c, cx, cy, s) => {
+      const r = s * 0.45;
+      c.beginPath();
+      c.arc(cx, cy - s + r, r, -Math.PI * 0.15, Math.PI, false);
+      c.arc(cx, cy + s - r, r, 0, Math.PI * 1.15, true);
+    }
+  },
+  'V': {
+    pathLen: (s) => 2 * Math.hypot(s * 0.7, s * 1.7),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.7, y: cy - s * 0.85 },
+      { x: cx + s * 0.7, y: cy - s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.7, cy - s * 0.85);
+      c.lineTo(cx, cy + s * 0.85);
+      c.lineTo(cx + s * 0.7, cy - s * 0.85);
+    }
+  },
+  'J': {
+    pathLen: (s) => s * 1.25 + Math.PI * s * 0.35,
+    endpoints: (cx, cy, s) => [
+      { x: cx + s * 0.35, y: cy - s * 0.85 },
+      { x: cx - s * 0.35, y: cy + s * 0.4 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx + s * 0.35, cy - s * 0.85);
+      c.lineTo(cx + s * 0.35, cy + s * 0.4);
+      c.arc(cx, cy + s * 0.4, s * 0.35, 0, Math.PI, false);
+    }
+  },
+  'N': {
+    pathLen: (s) => s * 3.4 + Math.hypot(s, s * 1.7),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.5, y: cy + s * 0.85 },
+      { x: cx + s * 0.5, y: cy - s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.5, cy + s * 0.85);
+      c.lineTo(cx - s * 0.5, cy - s * 0.85);
+      c.lineTo(cx + s * 0.5, cy + s * 0.85);
+      c.lineTo(cx + s * 0.5, cy - s * 0.85);
+    }
+  },
+  'Z': {
+    pathLen: (s) => s * 2.8 + Math.hypot(s * 1.4, s * 1.7),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.7, y: cy - s * 0.85 },
+      { x: cx + s * 0.7, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.7, cy - s * 0.85);
+      c.lineTo(cx + s * 0.7, cy - s * 0.85);
+      c.lineTo(cx - s * 0.7, cy + s * 0.85);
+      c.lineTo(cx + s * 0.7, cy + s * 0.85);
+    }
+  },
+  'O': {
+    pathLen: (s) => Math.PI * s * 1.5,
+    endpoints: (cx, cy, s) => [
+      { x: cx - 8, y: cy + s * 0.85 },
+      { x: cx + 8, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - 8, cy + s * 0.85);
+      c.bezierCurveTo(
+        cx - s * 0.85, cy + s * 0.5,
+        cx - s * 0.85, cy - s * 0.5,
+        cx, cy - s * 0.85
+      );
+      c.bezierCurveTo(
+        cx + s * 0.85, cy - s * 0.5,
+        cx + s * 0.85, cy + s * 0.5,
+        cx + 8, cy + s * 0.85
+      );
+    }
+  },
+  'M': {
+    pathLen: (s) => 4 * Math.hypot(s * 0.4, s * 0.85),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.85, y: cy + s * 0.85 },
+      { x: cx + s * 0.85, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.85, cy + s * 0.85);
+      c.lineTo(cx - s * 0.4,  cy - s * 0.85);
+      c.lineTo(cx,            cy + s * 0.3);
+      c.lineTo(cx + s * 0.4,  cy - s * 0.85);
+      c.lineTo(cx + s * 0.85, cy + s * 0.85);
+    }
+  },
+  'W': {
+    pathLen: (s) => 4 * Math.hypot(s * 0.4, s * 0.85),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.85, y: cy - s * 0.85 },
+      { x: cx + s * 0.85, y: cy - s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.85, cy - s * 0.85);
+      c.lineTo(cx - s * 0.4,  cy + s * 0.85);
+      c.lineTo(cx,            cy - s * 0.3);
+      c.lineTo(cx + s * 0.4,  cy + s * 0.85);
+      c.lineTo(cx + s * 0.85, cy - s * 0.85);
+    }
+  },
+  // T：顶横 + 主竖；ribbon 需要从右上折返到中点再下垂
+  'T': {
+    pathLen: (s) => 1.4 * s + 0.7 * s + 1.7 * s,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.7, y: cy - s * 0.85 },
+      { x: cx,           y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.7, cy - s * 0.85);
+      c.lineTo(cx + s * 0.7, cy - s * 0.85);
+      c.moveTo(cx, cy - s * 0.85);
+      c.lineTo(cx, cy + s * 0.85);
+    }
+  },
+  // D：左竖 + 右半椭圆封口；起点终点都在左边
+  'D': {
+    pathLen: (s) => 1.7 * s + Math.PI * s * 0.85 * 0.85,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.5, y: cy - s * 0.85 },
+      { x: cx - s * 0.5, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.5, cy - s * 0.85);
+      c.lineTo(cx - s * 0.5, cy + s * 0.85);
+      c.bezierCurveTo(
+        cx + s * 0.85, cy + s * 0.85,
+        cx + s * 0.85, cy - s * 0.85,
+        cx - s * 0.5, cy - s * 0.85
+      );
+    }
+  },
+  // P：左竖 + 上半小圈
+  'P': {
+    pathLen: (s) => 1.7 * s + Math.PI * s * 0.45,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.5, y: cy + s * 0.85 },
+      { x: cx - s * 0.5, y: cy }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.5, cy + s * 0.85);
+      c.lineTo(cx - s * 0.5, cy - s * 0.85);
+      c.bezierCurveTo(
+        cx + s * 0.6, cy - s * 0.85,
+        cx + s * 0.6, cy,
+        cx - s * 0.5, cy
+      );
+    }
+  },
+  // R：P 的形状 + 右下斜腿
+  'R': {
+    pathLen: (s) => 1.7 * s + Math.PI * s * 0.45 + Math.hypot(s, s * 0.85),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.5, y: cy + s * 0.85 },
+      { x: cx + s * 0.5, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.5, cy + s * 0.85);
+      c.lineTo(cx - s * 0.5, cy - s * 0.85);
+      c.bezierCurveTo(
+        cx + s * 0.6, cy - s * 0.85,
+        cx + s * 0.6, cy,
+        cx - s * 0.5, cy
+      );
+      c.lineTo(cx + s * 0.5, cy + s * 0.85);
+    }
+  },
+  'A': {
+    pathLen: (s) => 2 * Math.hypot(s * 0.65, s * 1.7) + s,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.65, y: cy + s * 0.85 },
+      { x: cx + s * 0.5, y: cy + s * 0.2 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.65, cy + s * 0.85);
+      c.lineTo(cx, cy - s * 0.85);
+      c.lineTo(cx + s * 0.65, cy + s * 0.85);
+      c.moveTo(cx - s * 0.35, cy + s * 0.2);
+      c.lineTo(cx + s * 0.5, cy + s * 0.2);
+    }
+  },
+  'B': {
+    pathLen: (s) => 1.7 * s + Math.PI * s * 0.45 * 2,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.5, y: cy + s * 0.85 },
+      { x: cx - s * 0.5, y: cy + s * 0.05 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.5, cy + s * 0.85);
+      c.lineTo(cx - s * 0.5, cy - s * 0.85);
+      c.bezierCurveTo(cx + s * 0.68, cy - s * 0.85, cx + s * 0.68, cy - s * 0.08, cx - s * 0.5, cy - s * 0.05);
+      c.bezierCurveTo(cx + s * 0.75, cy - s * 0.02, cx + s * 0.75, cy + s * 0.85, cx - s * 0.5, cy + s * 0.85);
+    }
+  },
+  'E': {
+    pathLen: (s) => s * 1.7 + s * 1.35 + s * 1.05 + s * 1.35,
+    endpoints: (cx, cy, s) => [
+      { x: cx + s * 0.65, y: cy - s * 0.85 },
+      { x: cx + s * 0.65, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx + s * 0.65, cy - s * 0.85);
+      c.lineTo(cx - s * 0.55, cy - s * 0.85);
+      c.lineTo(cx - s * 0.55, cy);
+      c.lineTo(cx + s * 0.35, cy);
+      c.moveTo(cx - s * 0.55, cy);
+      c.lineTo(cx - s * 0.55, cy + s * 0.85);
+      c.lineTo(cx + s * 0.65, cy + s * 0.85);
+    }
+  },
+  'F': {
+    pathLen: (s) => s * 1.7 + s * 1.35 + s,
+    endpoints: (cx, cy, s) => [
+      { x: cx + s * 0.65, y: cy - s * 0.85 },
+      { x: cx + s * 0.35, y: cy }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx + s * 0.65, cy - s * 0.85);
+      c.lineTo(cx - s * 0.55, cy - s * 0.85);
+      c.lineTo(cx - s * 0.55, cy + s * 0.85);
+      c.moveTo(cx - s * 0.55, cy);
+      c.lineTo(cx + s * 0.35, cy);
+    }
+  },
+  'G': {
+    pathLen: (s) => Math.PI * s * 0.85 * 1.5 + s * 0.65,
+    endpoints: (cx, cy, s) => {
+      const r = s * 0.85;
+      return [
+        { x: cx + r * 0.75, y: cy - r * 0.62 },
+        { x: cx + s * 0.2, y: cy + s * 0.1 }
+      ];
+    },
+    drawPath: (c, cx, cy, s) => {
+      const r = s * 0.85;
+      c.beginPath();
+      c.arc(cx, cy, r, -Math.PI * 0.25, Math.PI * 1.45, true);
+      c.lineTo(cx + s * 0.55, cy + s * 0.1);
+      c.lineTo(cx + s * 0.2, cy + s * 0.1);
+    }
+  },
+  'H': {
+    pathLen: (s) => s * 3.4 + s * 1.1,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.55, y: cy - s * 0.85 },
+      { x: cx + s * 0.55, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.55, cy - s * 0.85);
+      c.lineTo(cx - s * 0.55, cy + s * 0.85);
+      c.moveTo(cx - s * 0.55, cy);
+      c.lineTo(cx + s * 0.55, cy);
+      c.moveTo(cx + s * 0.55, cy - s * 0.85);
+      c.lineTo(cx + s * 0.55, cy + s * 0.85);
+    }
+  },
+  'K': {
+    pathLen: (s) => s * 1.7 + 2 * Math.hypot(s * 1.05, s * 0.85),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.55, y: cy + s * 0.85 },
+      { x: cx + s * 0.65, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.55, cy + s * 0.85);
+      c.lineTo(cx - s * 0.55, cy - s * 0.85);
+      c.moveTo(cx - s * 0.55, cy);
+      c.lineTo(cx + s * 0.65, cy - s * 0.85);
+      c.moveTo(cx - s * 0.55, cy);
+      c.lineTo(cx + s * 0.65, cy + s * 0.85);
+    }
+  },
+  'Q': {
+    pathLen: (s) => Math.PI * s * 1.5 + Math.hypot(s * 0.5, s * 0.5),
+    endpoints: (cx, cy, s) => [
+      { x: cx - 8, y: cy + s * 0.85 },
+      { x: cx + s * 0.65, y: cy + s * 0.95 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - 8, cy + s * 0.85);
+      c.bezierCurveTo(cx - s * 0.85, cy + s * 0.5, cx - s * 0.85, cy - s * 0.5, cx, cy - s * 0.85);
+      c.bezierCurveTo(cx + s * 0.85, cy - s * 0.5, cx + s * 0.85, cy + s * 0.5, cx + 8, cy + s * 0.85);
+      c.moveTo(cx + s * 0.2, cy + s * 0.35);
+      c.lineTo(cx + s * 0.65, cy + s * 0.95);
+    }
+  },
+  'X': {
+    pathLen: (s) => 2 * Math.hypot(s * 1.3, s * 1.7),
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.65, y: cy - s * 0.85 },
+      { x: cx + s * 0.65, y: cy - s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.65, cy - s * 0.85);
+      c.lineTo(cx + s * 0.65, cy + s * 0.85);
+      c.moveTo(cx - s * 0.65, cy + s * 0.85);
+      c.lineTo(cx + s * 0.65, cy - s * 0.85);
+    }
+  },
+  'Y': {
+    pathLen: (s) => 2 * Math.hypot(s * 0.65, s * 0.85) + s * 0.85,
+    endpoints: (cx, cy, s) => [
+      { x: cx - s * 0.65, y: cy - s * 0.85 },
+      { x: cx, y: cy + s * 0.85 }
+    ],
+    drawPath: (c, cx, cy, s) => {
+      c.beginPath();
+      c.moveTo(cx - s * 0.65, cy - s * 0.85);
+      c.lineTo(cx, cy);
+      c.lineTo(cx + s * 0.65, cy - s * 0.85);
+      c.moveTo(cx, cy);
+      c.lineTo(cx, cy + s * 0.85);
+    }
+  }
+};
+
+// ============================================================
+// 游戏状态
+// ============================================================
+const INITIAL_PINS = 26;
+const ALL_LETTERS = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'.split('');
+// 单词模式会自动过滤：只用已经定义路径且有中文释义的词。
+const WORD_LIST = [
+  'IN', 'IT', 'IS', 'ON', 'NO', 'TO', 'DO', 'SO', 'UP', 'US',
+  'WIN', 'SUN', 'NOW', 'OWN', 'MOM', 'COW', 'WOW', 'SIN', 'SIT', 'SIR',
+  'SON', 'RUN', 'OUT', 'OUR', 'OIL', 'TIN', 'TIP', 'TOP', 'POT', 'COP',
+  'CUP', 'CUT', 'COT', 'DOT', 'NOD', 'DIM', 'RIP', 'RIM', 'ROD', 'ROT',
+  'RUT', 'LIT', 'LIP', 'LID', 'LOW', 'LOT', 'MUD', 'MUM', 'MOP', 'MOW',
+  'TWO', 'WON', 'WOO', 'WIT', 'NUT', 'PIN', 'PIT', 'PUN', 'POP', 'PUP',
+  'ZOO',
+  'JOIN', 'LION', 'MOON', 'NOON', 'SOON', 'ROOM', 'COOL', 'COIN',
+  'JUMP', 'SNOW', 'WIND', 'VOID', 'DOWN', 'INTO', 'UNIT', 'TWIN', 'TURN',
+  'TOUR', 'POUR', 'PULL', 'POND', 'DUST', 'JUST', 'MUST', 'MIST', 'MINT',
+  'LOST', 'LIST', 'SLIP', 'SPIN', 'SPOT', 'STOP', 'POST', 'PORT', 'SOUP',
+  'SUIT', 'UNDO', 'IRON', 'RIOT', 'TRIO', 'TRIM', 'DRIP', 'DROP', 'CROP',
+  'COST', 'COLD', 'TOLD', 'SOLD', 'MILD', 'WILD', 'WORD', 'WORM', 'DOLL',
+  'JOLT', 'MOLD', 'SLOW', 'SWIM', 'JUDO', 'ZOOM',
+  'POINT', 'COUNT', 'MOUNT', 'SOUND', 'ROUND', 'TRUST', 'STORM', 'CLOUD',
+  'WORLD', 'WINDOW'
+];
+const WORD_MEANINGS = {
+  IN: '在里面',
+  IT: '它',
+  IS: '是',
+  ON: '在上面',
+  NO: '不',
+  TO: '到',
+  DO: '做',
+  SO: '所以',
+  UP: '向上',
+  US: '我们',
+  WIN: '赢',
+  SUN: '太阳',
+  NOW: '现在',
+  OWN: '拥有',
+  MOM: '妈妈',
+  COW: '奶牛',
+  WOW: '哇',
+  SIN: '罪',
+  SIT: '坐',
+  SIR: '先生',
+  SON: '儿子',
+  RUN: '跑',
+  OUT: '出去',
+  OUR: '我们的',
+  OIL: '油',
+  TIN: '锡罐',
+  TIP: '尖端',
+  TOP: '顶部',
+  POT: '锅',
+  COP: '警察',
+  CUP: '杯子',
+  CUT: '切',
+  COT: '小床',
+  DOT: '点',
+  NOD: '点头',
+  DIM: '昏暗',
+  RIP: '撕开',
+  RIM: '边缘',
+  ROD: '杆',
+  ROT: '腐烂',
+  RUT: '车辙',
+  LIT: '点亮',
+  LIP: '嘴唇',
+  LID: '盖子',
+  LOW: '低',
+  LOT: '许多',
+  MUD: '泥',
+  MUM: '妈妈',
+  MOP: '拖把',
+  MOW: '割草',
+  TWO: '二',
+  WON: '赢了',
+  WOO: '追求',
+  WIT: '机智',
+  NUT: '坚果',
+  PIN: '别针',
+  PIT: '坑',
+  PUN: '双关语',
+  POP: '砰',
+  PUP: '小狗',
+  ZOO: '动物园',
+  JOIN: '加入',
+  LION: '狮子',
+  MOON: '月亮',
+  NOON: '中午',
+  SOON: '很快',
+  ROOM: '房间',
+  COOL: '酷',
+  COIN: '硬币',
+  JUMP: '跳',
+  SNOW: '雪',
+  WIND: '风',
+  VOID: '空白',
+  DOWN: '向下',
+  INTO: '进入',
+  UNIT: '单元',
+  TWIN: '双胞胎',
+  TURN: '转弯',
+  TOUR: '旅行',
+  POUR: '倒',
+  PULL: '拉',
+  POND: '池塘',
+  DUST: '灰尘',
+  JUST: '刚刚',
+  MUST: '必须',
+  MIST: '薄雾',
+  MINT: '薄荷',
+  LOST: '迷路',
+  LIST: '清单',
+  SLIP: '滑倒',
+  SPIN: '旋转',
+  SPOT: '斑点',
+  STOP: '停止',
+  POST: '邮寄',
+  PORT: '港口',
+  SOUP: '汤',
+  SUIT: '套装',
+  UNDO: '撤销',
+  IRON: '铁',
+  RIOT: '骚乱',
+  TRIO: '三人组',
+  TRIM: '修剪',
+  DRIP: '滴落',
+  DROP: '掉落',
+  CROP: '庄稼',
+  COST: '花费',
+  COLD: '冷',
+  TOLD: '告诉了',
+  SOLD: '卖了',
+  MILD: '温和',
+  WILD: '野生',
+  WORD: '单词',
+  WORM: '虫子',
+  DOLL: '玩偶',
+  JOLT: '震动',
+  MOLD: '模具',
+  SLOW: '慢',
+  SWIM: '游泳',
+  JUDO: '柔道',
+  ZOOM: '快速移动',
+  POINT: '点',
+  COUNT: '数数',
+  MOUNT: '山',
+  SOUND: '声音',
+  ROUND: '圆的',
+  TRUST: '信任',
+  STORM: '风暴',
+  CLOUD: '云',
+  WORLD: '世界',
+  WINDOW: '窗户'
+};
+const EXTRA_WORD_MEANINGS = {
+  ABOUT: '关于',
+  ABOVE: '在上方',
+  AFTER: '在之后',
+  AGAIN: '再次',
+  ALARM: '闹钟',
+  ALBUM: '相册',
+  ALIVE: '活着的',
+  ALONE: '独自',
+  ANIMAL: '动物',
+  ANSWER: '回答',
+  APPLE: '苹果',
+  APRIL: '四月',
+  AREA: '区域',
+  ARMY: '军队',
+  BABY: '婴儿',
+  BACK: '后面',
+  BAD: '坏的',
+  BAG: '包',
+  BALL: '球',
+  BANANA: '香蕉',
+  BANK: '银行',
+  BASE: '基础',
+  BEACH: '海滩',
+  BEAUTY: '美',
+  BED: '床',
+  BEE: '蜜蜂',
+  BEST: '最好的',
+  BIKE: '自行车',
+  BIRD: '鸟',
+  BIRTH: '出生',
+  BLACK: '黑色',
+  BLUE: '蓝色',
+  BOAT: '船',
+  BODY: '身体',
+  BOOK: '书',
+  BREAD: '面包',
+  BREAK: '休息',
+  BUS: '公共汽车',
+  CAKE: '蛋糕',
+  CAMP: '营地',
+  CARD: '卡片',
+  CARE: '关心',
+  CAT: '猫',
+  CITY: '城市',
+  CLASS: '班级',
+  CLEAN: '清洁',
+  CLOCK: '时钟',
+  CODE: '代码',
+  COLOR: '颜色',
+  COME: '来',
+  COOK: '做饭',
+  DAY: '天',
+  DEAR: '亲爱的',
+  DESK: '课桌',
+  DOOR: '门',
+  DREAM: '梦想',
+  EASY: '容易的',
+  EAT: '吃',
+  EGG: '鸡蛋',
+  FACE: '脸',
+  FAMILY: '家庭',
+  FAST: '快的',
+  FATHER: '父亲',
+  FEEL: '感觉',
+  FIELD: '田野',
+  FIRE: '火',
+  FISH: '鱼',
+  FOOD: '食物',
+  FOOT: '脚',
+  FOREST: '森林',
+  FREE: '自由的',
+  FRIDAY: '星期五',
+  FRIEND: '朋友',
+  GAME: '游戏',
+  GARDEN: '花园',
+  GIFT: '礼物',
+  GIRL: '女孩',
+  GOLD: '金色',
+  GOOD: '好的',
+  GREEN: '绿色',
+  GROUP: '小组',
+  HAPPY: '开心',
+  HARD: '困难的',
+  HAT: '帽子',
+  HEAD: '头',
+  HEALTH: '健康',
+  HEART: '心',
+  HELP: '帮助',
+  HOME: '家',
+  HOPE: '希望',
+  HOUSE: '房子',
+  IDEA: '想法',
+  JOB: '工作',
+  KEY: '钥匙',
+  KING: '国王',
+  KITCHEN: '厨房',
+  LAKE: '湖',
+  LAND: '土地',
+  LATE: '迟到',
+  LEAF: '叶子',
+  LEFT: '左边',
+  LIGHT: '光',
+  LINE: '线',
+  LOVE: '爱',
+  LUCKY: '幸运',
+  MAGIC: '魔法',
+  MAP: '地图',
+  MARKET: '市场',
+  MATH: '数学',
+  MILK: '牛奶',
+  MONEY: '钱',
+  MONTH: '月份',
+  MUSIC: '音乐',
+  NAME: '名字',
+  NIGHT: '夜晚',
+  NORTH: '北方',
+  NOTE: '笔记',
+  PAGE: '页面',
+  PAPER: '纸',
+  PARTY: '聚会',
+  PEACE: '和平',
+  PHONE: '电话',
+  PHOTO: '照片',
+  PLAN: '计划',
+  PLANT: '植物',
+  PLAY: '玩',
+  QUEEN: '女王',
+  QUICK: '快的',
+  QUIET: '安静',
+  RAIN: '雨',
+  READ: '读',
+  RED: '红色',
+  RIGHT: '右边',
+  RIVER: '河',
+  ROAD: '路',
+  ROBOT: '机器人',
+  SAVE: '保存',
+  SCHOOL: '学校',
+  SEA: '海',
+  SEASON: '季节',
+  SHIP: '船',
+  SHOP: '商店',
+  SHORT: '短的',
+  SKY: '天空',
+  SMALL: '小的',
+  SMART: '聪明',
+  SOUTH: '南方',
+  SPACE: '空间',
+  SPORT: '运动',
+  STAR: '星星',
+  STUDY: '学习',
+  SUGAR: '糖',
+  SUMMER: '夏天',
+  TABLE: '桌子',
+  TEAM: '团队',
+  TIME: '时间',
+  TODAY: '今天',
+  TREE: '树',
+  WATER: '水',
+  WEEK: '星期',
+  WHITE: '白色',
+  YEAR: '年',
+  YELLOW: '黄色',
+  YOUNG: '年轻',
+  ZERO: '零'
+};
+for (const [word, meaning] of Object.entries(EXTRA_WORD_MEANINGS)) {
+  if (!WORD_MEANINGS[word]) WORD_LIST.push(word);
+  WORD_MEANINGS[word] = meaning;
+}
+const WORDS_PER_RUN = 5;
+const INITIAL_PINS_WORD = 18;  // 单词模式会按词长动态补钉子
+
+function shuffleList(list) {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function wordIsSupported(word) {
+  return word.split('').every(ch => alphabet[ch] && WORD_MEANINGS[word]);
+}
+
+let wordDeck = [];
+let lastWordRun = [];
+
+function buildLetterRun() {
+  // I 永远首关当教学（钉子 0 颗就能过），其余 15 字母洗牌
+  const rest = shuffleList(ALL_LETTERS);
+  return { letters: ['I', ...rest] };
+}
+
+function buildWordRun(count = WORDS_PER_RUN) {
+  const supportedWords = WORD_LIST.filter(wordIsSupported);
+  while (wordDeck.length < count) {
+    const fresh = shuffleList(supportedWords);
+    if (lastWordRun.length > 0 && fresh.length > count) {
+      const repeats = fresh.filter(w => lastWordRun.includes(w));
+      const newWords = fresh.filter(w => !lastWordRun.includes(w));
+      wordDeck.push(...newWords, ...repeats);
+    } else {
+      wordDeck.push(...fresh);
+    }
+  }
+  // 像抽牌一样发一局，尽量跑完整个词库后才重复。
+  const picked = wordDeck.splice(0, count).sort((a, b) => a.length - b.length);
+  lastWordRun = picked.slice();
+  return { words: picked };
+}
+
+const initialRun = buildLetterRun();
+const game = {
+  mode: 'letter',
+  // letter 模式
+  letters: initialRun.letters,
+  letterIdx: 0,
+  passedFlags: new Array(initialRun.letters.length).fill(false),
+  // word 模式
+  words: null,
+  wordIdx: 0,
+  wordTarget: null,
+  wordPassedFlags: null,
+  // 共享
+  score: 0,
+  holdTime: 0,
+  hasInteracted: false,
+  passed: false,
+  pendingStars: 0,
+  starsTotal: 0,
+  scoreToast: null,
+  passTimeout: null,
+  pinsLeft: INITIAL_PINS,
+  levelsCleared: 0,
+  ended: false
+};
+
+function pinsForMode(mode) {
+  return mode === 'word' ? INITIAL_PINS_WORD : INITIAL_PINS;
+}
+
+function pinsForWord(word) {
+  const len = word ? word.length : 3;
+  if (len <= 3) return 18;
+  if (len === 4) return 24;
+  if (len === 5) return 30;
+  return 36;
+}
+
+function setMode(mode) {
+  if (mode !== 'letter' && mode !== 'word') return;
+  game.mode = mode;
+  document.getElementById('modeTabLetter').classList.toggle('active', mode === 'letter');
+  document.getElementById('modeTabWord').classList.toggle('active', mode === 'word');
+  restartGame();
+}
+
+function starsForScore(score) {
+  const thresholds = game.mode === 'word' ? [0.30, 0.42, 0.55] : [0.40, 0.55, 0.70];
+  if (score >= thresholds[2]) return 3;
+  if (score >= thresholds[1]) return 2;
+  if (score >= thresholds[0]) return 1;
+  return 0;
+}
+
+function letterCenter() {
+  return { cx: W * 0.5, cy: H * 0.53, s: Math.min(W, H) * 0.215 };
+}
+
+// 把一个单词布局成横向排列的多个字母，返回每个字母的位置 + 总路径长 + 整带子两端点
+function buildWordTarget(word) {
+  const n = word.length;
+  const marginX = W * 0.045;
+  const marginY = H * 0.16;
+  const availW = W - 2 * marginX;
+  const slotW = availW / n;
+  // 字母大小：受 slot 宽度和画布高度双重约束
+  const s = Math.min(slotW * 0.62, (H - 2 * marginY) * 0.52);
+  const cy = H * 0.55;
+  const positions = [];
+  for (let i = 0; i < n; i++) {
+    const cx = marginX + slotW * (i + 0.5);
+    positions.push({ ch: word[i], cx, cy, s });
+  }
+  let totalLen = 0;
+  let firstEp = null, lastEp = null;
+  for (let i = 0; i < n; i++) {
+    const p = positions[i];
+    const eps = alphabet[p.ch].endpoints(p.cx, p.cy, p.s);
+    totalLen += alphabet[p.ch].pathLen(p.s);
+    if (i === 0) firstEp = eps[0];
+    if (i > 0) {
+      const prev = positions[i - 1];
+      const prevEps = alphabet[prev.ch].endpoints(prev.cx, prev.cy, prev.s);
+      // 字母间连接 = 上字母 ep1 到下字母 ep0 的直线距离
+      totalLen += Math.hypot(eps[0].x - prevEps[1].x, eps[0].y - prevEps[1].y);
+    }
+    lastEp = eps[1];
+  }
+  return { word, positions, totalLen, firstEp, lastEp };
+}
+
+function setWord(word) {
+  const t = buildWordTarget(word);
+  game.wordTarget = t;
+  game.pinsLeft = pinsForWord(word);
+  layoutLine(t.firstEp, t.lastEp, t.totalLen * 1.05);
+  game.score = 0;
+  game.holdTime = 0;
+  game.hasInteracted = false;
+  game.passed = false;
+  game.pendingStars = 0;
+  game.scoreToast = null;
+  pinBursts.length = 0;
+  passBursts.length = 0;
+  if (game.passTimeout) { clearTimeout(game.passTimeout); game.passTimeout = null; }
+  renderTargetMask();
+  updateHUD();
+}
+
+function setLetter(name) {
+  const letter = alphabet[name];
+  const { cx, cy, s } = letterCenter();
+  const eps = letter.endpoints(cx, cy, s);
+  const len = letter.pathLen(s) * 1.05;  // 给 5% 松弛
+  layoutLine(eps[0], eps[1], len);
+  game.score = 0;
+  game.holdTime = 0;
+  game.hasInteracted = false;
+  game.passed = false;
+  game.pendingStars = 0;
+  game.scoreToast = null;
+  pinBursts.length = 0;
+  passBursts.length = 0;
+  if (game.passTimeout) { clearTimeout(game.passTimeout); game.passTimeout = null; }
+  renderTargetMask();
+  updateHUD();
+}
+
+function nextLetter(passed = true) {
+  if (game.mode === 'word') return nextWord(passed);
+  const stars = passed ? Math.max(1, game.pendingStars) : 0;
+  if (passed) {
+    game.levelsCleared++;  // 跳过不计成绩，钉子也不返还
+    game.starsTotal += stars;
+  }
+  game.passedFlags[game.letterIdx] = stars;
+  if (game.letterIdx + 1 >= game.letters.length) {
+    showEndScreen();
+    return;
+  }
+  game.letterIdx++;
+  setLetter(game.letters[game.letterIdx]);
+}
+
+function nextWord(passed = true) {
+  const stars = passed ? Math.max(1, game.pendingStars) : 0;
+  if (passed) {
+    game.levelsCleared++;
+    game.starsTotal += stars;
+  }
+  game.wordPassedFlags[game.wordIdx] = stars;
+  if (game.wordIdx + 1 >= game.words.length) {
+    showEndScreen();
+    return;
+  }
+  game.wordIdx++;
+  setWord(game.words[game.wordIdx]);
+}
+
+function skipLetter() { if (!game.ended) nextLetter(false); }
+
+function showEndScreen() {
+  game.ended = true;
+  const isWord = game.mode === 'word' && game.words;
+  const total = isWord ? game.words.length : game.letters.length;
+  const win = game.levelsCleared === total;
+  const card = document.getElementById('endCard');
+  card.classList.toggle('win', win);
+  document.getElementById('endTitle').textContent = win ? '🎉 全部通关！' : '游戏结束';
+  document.getElementById('endSub').textContent = win
+    ? `钉子剩 ${game.pinsLeft} 颗，拿到 ${game.starsTotal} 颗星`
+    : `钉子还剩 ${game.pinsLeft} 颗，拿到 ${game.starsTotal} 颗星`;
+  if (isWord) {
+    document.getElementById('endLevels').textContent = game.levelsCleared;
+    document.getElementById('endStars').textContent = game.starsTotal;
+    document.getElementById('endTotal').textContent = total;
+    document.querySelectorAll('.end-stat span')[0].textContent = '完成单词';
+    document.querySelectorAll('.end-stat span')[1].textContent = '星星';
+    document.querySelectorAll('.end-stat span')[2].textContent = '总单词';
+  } else {
+    document.getElementById('endLevels').textContent = game.levelsCleared;
+    document.getElementById('endStars').textContent = game.starsTotal;
+    document.getElementById('endTotal').textContent = total;
+    document.querySelectorAll('.end-stat span')[0].textContent = '已过关';
+    document.querySelectorAll('.end-stat span')[1].textContent = '星星';
+    document.querySelectorAll('.end-stat span')[2].textContent = '总关数';
+  }
+  document.getElementById('endScreen').classList.remove('hidden');
+  document.getElementById('hud').classList.add('hidden');
+}
+
+
+// ============================================================
+// 评分：把当前带子和目标字母都画到小尺寸 mask canvas，算 IoU
+// ============================================================
+const MASK_SCALE = 0.13;  // mask = 屏幕的 13% 分辨率（等比，避免变形）
+let MASK_W = 1, MASK_H = 1;
+const targetMask = document.createElement('canvas');
+const ribbonMask = document.createElement('canvas');
+const tmCtx = targetMask.getContext('2d', { willReadFrequently: true });
+const rmCtx = ribbonMask.getContext('2d', { willReadFrequently: true });
+
+function syncMaskSize() {
+  MASK_W = Math.max(60, Math.round(W * MASK_SCALE));
+  MASK_H = Math.max(45, Math.round(H * MASK_SCALE));
+  targetMask.width = MASK_W; targetMask.height = MASK_H;
+  ribbonMask.width = MASK_W; ribbonMask.height = MASK_H;
+}
+
+const TARGET_W = 32;  // target 描线宽度（屏幕坐标），粗一点给容忍度
+const RIBBON_W = 22;
+
+function renderTargetMask() {
+  syncMaskSize();
+  tmCtx.clearRect(0, 0, MASK_W, MASK_H);
+  tmCtx.strokeStyle = '#fff';
+  tmCtx.lineWidth = TARGET_W * MASK_SCALE;
+  tmCtx.lineCap = 'round';
+  tmCtx.lineJoin = 'round';
+  if (game.mode === 'word' && game.wordTarget) {
+    const positions = game.wordTarget.positions;
+    for (let i = 0; i < positions.length; i++) {
+      const p = positions[i];
+      alphabet[p.ch].drawPath(tmCtx, p.cx * MASK_SCALE, p.cy * MASK_SCALE, p.s * MASK_SCALE);
+      tmCtx.stroke();
+      if (i > 0) {
+        const prev = positions[i - 1];
+        const prevEps = alphabet[prev.ch].endpoints(prev.cx, prev.cy, prev.s);
+        const eps = alphabet[p.ch].endpoints(p.cx, p.cy, p.s);
+        // 字母间连接线（也算 target 一部分，鼓励连续书写）
+        tmCtx.beginPath();
+        tmCtx.moveTo(prevEps[1].x * MASK_SCALE, prevEps[1].y * MASK_SCALE);
+        tmCtx.lineTo(eps[0].x * MASK_SCALE, eps[0].y * MASK_SCALE);
+        tmCtx.stroke();
+      }
+    }
+  } else {
+    const { cx, cy, s } = letterCenter();
+    alphabet[game.letters[game.letterIdx]].drawPath(
+      tmCtx, cx * MASK_SCALE, cy * MASK_SCALE, s * MASK_SCALE
+    );
+    tmCtx.stroke();
+  }
+}
+
+function renderRibbonMask() {
+  rmCtx.clearRect(0, 0, MASK_W, MASK_H);
+  rmCtx.strokeStyle = '#fff';
+  rmCtx.lineWidth = RIBBON_W * MASK_SCALE;
+  rmCtx.lineCap = 'round';
+  rmCtx.lineJoin = 'round';
+  rmCtx.beginPath();
+  rmCtx.moveTo(parts[0].x * MASK_SCALE, parts[0].y * MASK_SCALE);
+  for (let i = 1; i < N; i++) rmCtx.lineTo(parts[i].x * MASK_SCALE, parts[i].y * MASK_SCALE);
+  rmCtx.stroke();
+}
+
+function computeScore() {
+  const tData = tmCtx.getImageData(0, 0, MASK_W, MASK_H).data;
+  const rData = rmCtx.getImageData(0, 0, MASK_W, MASK_H).data;
+  let inter = 0, tArea = 0, rArea = 0;
+  for (let i = 3; i < tData.length; i += 4) {
+    const t = tData[i] > 96;
+    const r = rData[i] > 96;
+    if (t) tArea++;
+    if (r) rArea++;
+    if (t && r) inter++;
+  }
+  if (tArea === 0 || rArea === 0) return 0;
+  return inter / (tArea + rArea - inter);  // IoU
+}
+
+// 调试小窗：右下角显示目标（黄）/ 当前带子（青）/ 重叠（亮白）
+const debugCanvas = document.createElement('canvas');
+const dbgCtx = debugCanvas.getContext('2d', { willReadFrequently: true });
+function drawDebugMask() {
+  if (debugCanvas.width !== MASK_W) {
+    debugCanvas.width = MASK_W; debugCanvas.height = MASK_H;
+  }
+  const tData = tmCtx.getImageData(0, 0, MASK_W, MASK_H).data;
+  const rData = rmCtx.getImageData(0, 0, MASK_W, MASK_H).data;
+  const out = dbgCtx.createImageData(MASK_W, MASK_H);
+  for (let i = 0; i < tData.length; i += 4) {
+    const t = tData[i + 3] > 96;
+    const r = rData[i + 3] > 96;
+    if (t && r) {
+      // 重叠：纯白
+      out.data[i] = 255; out.data[i+1] = 255; out.data[i+2] = 255; out.data[i+3] = 255;
+    } else if (t) {
+      // 仅目标：饱和黄
+      out.data[i] = 255; out.data[i+1] = 217; out.data[i+2] = 61; out.data[i+3] = 255;
+    } else if (r) {
+      // 仅当前：饱和青
+      out.data[i] = 84; out.data[i+1] = 219; out.data[i+2] = 255; out.data[i+3] = 255;
+    } else {
+      out.data[i+3] = 0;
+    }
+  }
+  dbgCtx.putImageData(out, 0, 0);
+
+  // 画到主屏幕右下角
+  const dbgW = Math.min(280, W - 44), dbgH = dbgW * MASK_H / MASK_W;
+  const padX = 14, padTop = 32, padBot = 32;
+  const boxX = Math.max(16, W - dbgW - padX - 16);
+  const boxY = Math.max(80, H - dbgH - padTop - padBot - 20);
+  const boxW = dbgW + padX * 2;
+  const boxH = dbgH + padTop + padBot;
+
+  // 阴影 + 厚黑底
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = 'rgba(8,12,18,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.restore();
+
+  // 亮边框
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+
+  // 标题
+  ctx.fillStyle = '#fff';
+  ctx.font = '600 13px -apple-system, "Segoe UI", system-ui, sans-serif';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('匹配预览', boxX + padX, boxY + 20);
+
+  // 右上角实时分数（达标变绿）
+  const pct = Math.round(game.score * 100);
+  const passing = game.score >= 0.4;
+  ctx.fillStyle = passing ? '#2ed573' : '#ffa502';
+  ctx.font = '700 16px -apple-system, "Segoe UI", system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(pct + '%', boxX + boxW - padX, boxY + 22);
+  ctx.textAlign = 'left';
+
+  // mask 主体（关闭抗锯齿让像素马赛克更分明）
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(debugCanvas, boxX + padX, boxY + padTop, dbgW, dbgH);
+  ctx.imageSmoothingEnabled = true;
+
+  // 内框
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.strokeRect(boxX + padX + 0.5, boxY + padTop + 0.5, dbgW - 1, dbgH - 1);
+
+  // 图例：色块 + 文字
+  const legendY = boxY + padTop + dbgH + 14;
+  const legend = [
+    ['#ffd93d', '目标'],
+    ['#54dbff', '当前'],
+    ['#ffffff', '重合']
+  ];
+  let lx = boxX + padX;
+  ctx.font = '11px -apple-system, "Segoe UI", system-ui, sans-serif';
+  for (const [color, label] of legend) {
+    ctx.fillStyle = color;
+    ctx.fillRect(lx, legendY - 8, 10, 10);
+    ctx.fillStyle = '#c9d1d9';
+    ctx.fillText(label, lx + 16, legendY);
+    lx += 70;
+  }
+}
+
+function updateGame(dt) {
+  if (game.passed || game.ended) return;
+  renderRibbonMask();
+  game.score = computeScore();
+  const passThreshold = game.mode === 'word' ? 0.30 : 0.40;
+  if (game.hasInteracted && game.score >= passThreshold) {
+    game.holdTime += dt;
+    if (game.holdTime >= 0.5) {
+      game.passed = true;
+      game.pendingStars = starsForScore(game.score);
+      game.scoreToast = {
+        text: '+' + '★'.repeat(game.pendingStars),
+        age: 0,
+        life: 1.15,
+        x: W * 0.5,
+        y: H * 0.34
+      };
+      const cx = W * 0.5;
+      const cy = H * 0.38;
+      burstAt(cx, cy, 'pass');
+      document.getElementById('hud').classList.add('passed');
+      game.passTimeout = setTimeout(() => {
+        document.getElementById('hud').classList.remove('passed');
+        nextLetter();
+      }, 1100);
+    }
+  } else {
+    game.holdTime = Math.max(0, game.holdTime - dt * 1.5);
+  }
+  updateHUD();
+}
+
+function renderPrompt() {
+  const promptEl = document.getElementById('hudPrompt');
+  if (game.mode === 'word' && game.words) {
+    const word = game.words[game.wordIdx];
+    const spans = word.split('').map(ch => `<span class="word-cur">${ch}</span>`).join('');
+    const meaning = WORD_MEANINGS[word] || '';
+    promptEl.innerHTML = `用一根带子拼出 <span class="hud-word">${spans}</span> <span class="word-meaning">· ${meaning}</span>`;
+  } else {
+    promptEl.innerHTML = `把毛毛虫拗成 <span id="hudLetter" class="hud-letter">${game.letters[game.letterIdx]}</span>`;
+  }
+}
+
+function updateHUD() {
+  renderPrompt();
+  document.getElementById('hudScore').textContent = Math.round(game.score * 100) + '%';
+  document.getElementById('hudFill').style.width = Math.round(game.score * 100) + '%';
+  document.getElementById('hudPins').textContent = game.pinsLeft;
+  document.getElementById('hudStars').textContent = game.starsTotal + (game.pendingStars ? `+${game.pendingStars}` : '');
+  document.getElementById('hudThreshold').textContent = (game.mode === 'word' ? 30 : 40) + '%';
+  const wrap = document.getElementById('hudLevelsWrap');
+  if (game.mode === 'word' && game.words) {
+    wrap.innerHTML = `🏆 已拼 <b id="hudLevels">${game.levelsCleared}/${game.words.length}</b> 单词`;
+  } else {
+    wrap.innerHTML = `🏆 已过 <b id="hudLevels">${game.levelsCleared}/${game.letters.length}</b> 关`;
+  }
+  document.getElementById('hudPinWrap').classList.toggle('pin-low', game.pinsLeft <= 1);
+}
+
+function drawGhostItem(ch, cx, cy, s, ghostScale) {
+  const letter = alphabet[ch];
+  ctx.strokeStyle = 'rgba(255,217,61,0.07)';
+  ctx.lineWidth = 36 * ghostScale;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  letter.drawPath(ctx, cx, cy, s);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([7, 5]);
+  letter.drawPath(ctx, cx, cy, s);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawGhost() {
+  if (game.mode === 'word' && game.wordTarget) {
+    const positions = game.wordTarget.positions;
+    const ghostScale = Math.min(1, positions[0].s / (Math.min(W, H) * 0.18));
+    for (let i = 0; i < positions.length; i++) {
+      const p = positions[i];
+      drawGhostItem(p.ch, p.cx, p.cy, p.s, ghostScale);
+      if (i > 0) {
+        const prev = positions[i - 1];
+        const prevEps = alphabet[prev.ch].endpoints(prev.cx, prev.cy, prev.s);
+        const eps = alphabet[p.ch].endpoints(p.cx, p.cy, p.s);
+        // 连接线虚影
+        ctx.strokeStyle = 'rgba(255,217,61,0.07)';
+        ctx.lineWidth = 30 * ghostScale;
+        ctx.beginPath();
+        ctx.moveTo(prevEps[1].x, prevEps[1].y);
+        ctx.lineTo(eps[0].x, eps[0].y);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(prevEps[1].x, prevEps[1].y);
+        ctx.lineTo(eps[0].x, eps[0].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    // 整带子起止端点（绿头红尾）
+    ctx.fillStyle = 'rgba(46,213,115,0.85)';
+    ctx.beginPath();
+    ctx.arc(game.wordTarget.firstEp.x, game.wordTarget.firstEp.y, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,71,87,0.85)';
+    ctx.beginPath();
+    ctx.arc(game.wordTarget.lastEp.x, game.wordTarget.lastEp.y, 7, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const { cx, cy, s } = letterCenter();
+    drawGhostItem(game.letters[game.letterIdx], cx, cy, s, 1);
+    const letter = alphabet[game.letters[game.letterIdx]];
+    const eps = letter.endpoints(cx, cy, s);
+    ctx.fillStyle = 'rgba(255,217,61,0.55)';
+    for (const p of eps) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+resetRibbon();
+renderTargetMask();
+addEventListener('resize', () => { renderTargetMask(); });
+
+const mouse = { x: 0, y: 0, down: false, inside: false };
+
+function ptFrom(e) {
+  if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+// 交互模型：按下 → 移动 >8px 升级成"揉" / 移动 <8px 释放算"点"= 钉
+//   shift / 右键 仍直接钉（兼容鼠标用户）
+const TAP_MAX_MOVE = 8;
+let pressStart = null;
+cv.addEventListener('pointerdown', e => {
+  const p = ptFrom(e);
+  mouse.x = p.x; mouse.y = p.y; mouse.inside = true;
+  game.hasInteracted = true;
+  if (e.shiftKey || e.button === 2) {
+    togglePinAt(p.x, p.y);
+    e.preventDefault();
+    pressStart = null;
+    return;
+  }
+  pressStart = { x: p.x, y: p.y };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  const p = ptFrom(e);
+  mouse.x = p.x; mouse.y = p.y; mouse.inside = true;
+  if (pressStart && !mouse.down) {
+    if (Math.hypot(p.x - pressStart.x, p.y - pressStart.y) > TAP_MAX_MOVE) {
+      mouse.down = true;  // 升级为拖
+      grabIdx = findNearestGrabbable(pressStart.x, pressStart.y);  // 锁定一颗粒子捏住
+    }
+  }
+});
+cv.addEventListener('pointerup', e => {
+  if (pressStart && !mouse.down) {
+    togglePinAt(pressStart.x, pressStart.y);  // 没动过 = 点 = 钉
+  }
+  pressStart = null;
+  mouse.down = false;
+  grabIdx = -1;
+});
+cv.addEventListener('pointerleave',() => { mouse.inside = false; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+const trailLayer = document.createElement('canvas');
+const tctx = trailLayer.getContext('2d');
+function syncTrail() {
+  trailLayer.width = cv.width;
+  trailLayer.height = cv.height;
+  tctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+}
+syncTrail();
+addEventListener('resize', syncTrail);
+
+const PHYSICS = { bend: 0.12, damp: 0.94 };
+let grabIdx = -1;  // 当前被"捏住"跟随鼠标的粒子下标；-1 = 没在抓
+
+function findNearestGrabbable(x, y, maxD = 45) {
+  let bestI = -1, bestD = maxD;
+  for (let i = 1; i < N - 1; i++) {  // 端点不能抓（会破坏字母两端锚点）
+    const d = Math.hypot(parts[i].x - x, parts[i].y - y);
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  return bestI;
+}
+
+function step() {
+  const bend = PHYSICS.bend, damp = PHYSICS.damp;
+
+  // verlet
+  for (const p of parts) {
+    const vx = (p.x - p.px) * damp;
+    const vy = (p.y - p.py) * damp;
+    p.px = p.x; p.py = p.y;
+    p.x += vx; p.y += vy;
+  }
+
+  // 约束求解：长度 + 弯曲 + 锚点（端点/钉点/抓握点）
+  for (let iter = 0; iter < 4; iter++) {
+    for (let i = 0; i < N - 1; i++) {
+      const a = parts[i], b = parts[i + 1];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy) || 0.0001;
+      const diff = (d - segLen) / d * 0.5;
+      a.x += dx * diff; a.y += dy * diff;
+      b.x -= dx * diff; b.y -= dy * diff;
+    }
+    if (bend > 0) {
+      for (let i = 1; i < N - 1; i++) {
+        const a = parts[i - 1], b = parts[i], c = parts[i + 1];
+        const mx = (a.x + c.x) * 0.5;
+        const my = (a.y + c.y) * 0.5;
+        b.x += (mx - b.x) * bend;
+        b.y += (my - b.y) * bend;
+      }
+    }
+    parts[0].x = parts[0].ox;     parts[0].y = parts[0].oy;
+    parts[N-1].x = parts[N-1].ox; parts[N-1].y = parts[N-1].oy;
+    for (let i = 1; i < N - 1; i++) {
+      if (parts[i].pinned) {
+        parts[i].x = parts[i].ox;
+        parts[i].y = parts[i].oy;
+      }
+    }
+    if (grabIdx > 0 && grabIdx < N - 1) {
+      parts[grabIdx].x = mouse.x;
+      parts[grabIdx].y = mouse.y;
+    }
+  }
+
+  // 抓握后处理：消除速度避免松手时弹飞 + 钉点位置跟手移动
+  if (grabIdx > 0 && grabIdx < N - 1) {
+    parts[grabIdx].px = mouse.x;
+    parts[grabIdx].py = mouse.y;
+    if (parts[grabIdx].pinned) {
+      parts[grabIdx].ox = mouse.x;
+      parts[grabIdx].oy = mouse.y;
+    }
+  }
+}
+
+const candyColors = ['#ff4757', '#ffa502', '#ffd93d', '#2ed573', '#54a0ff', '#a29bfe'];
+const wormPalette = [
+  ['#ff4757', '#ffa502'],  // 红 + 橙
+  ['#ffd93d', '#2ed573'],  // 黄 + 绿
+  ['#54a0ff', '#a29bfe'],  // 蓝 + 紫
+  ['#ff6b9d', '#ffd93d'],  // 粉 + 黄
+  ['#2ed573', '#54a0ff'],  // 绿 + 蓝
+  ['#ffa502', '#ff4757'],  // 橙 + 红
+];
+
+function normalAt(i) {
+  const a = parts[Math.max(0, i - 1)];
+  const b = parts[Math.min(N - 1, i + 1)];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { nx: -dy / len, ny: dx / len };
+}
+
+function drawRibbonTo(ctx2) {
+  const style = document.getElementById('style').value;
+
+  if (style === 'worm') {
+    drawWorm(ctx2);
+    return;
+  }
+
+  if (style === 'pencil') {
+    drawPencil(ctx2);
+    return;
+  }
+
+  if (style === 'neon') {
+    drawNeon(ctx2);
+    return;
+  }
+
+  if (style === 'bead') {
+    // 糖豆串模式：沿带子等距摆放彩色糖珠
+    const beadEvery = 3;
+    const r = 13;
+    for (let i = 0; i < N; i += beadEvery) {
+      const p = parts[i];
+      const colorIdx = Math.floor(i / beadEvery) % candyColors.length;
+      const color = candyColors[colorIdx];
+
+      // 投影
+      ctx2.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx2.beginPath();
+      ctx2.arc(p.x + 1.5, p.y + 4, r, 0, Math.PI * 2);
+      ctx2.fill();
+
+      // 糖珠主体（径向渐变让它有立体感）
+      const body = ctx2.createRadialGradient(p.x - 3, p.y - 3, 1, p.x, p.y, r);
+      body.addColorStop(0, lighten(color, 0.35));
+      body.addColorStop(0.7, color);
+      body.addColorStop(1, darken(color, 0.2));
+      ctx2.fillStyle = body;
+      ctx2.beginPath();
+      ctx2.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx2.fill();
+
+      // 高光斑
+      const hl = ctx2.createRadialGradient(p.x - 4, p.y - 5, 0, p.x - 4, p.y - 5, 7);
+      hl.addColorStop(0, 'rgba(255,255,255,0.85)');
+      hl.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx2.fillStyle = hl;
+      ctx2.beginPath();
+      ctx2.arc(p.x - 4, p.y - 5, 7, 0, Math.PI * 2);
+      ctx2.fill();
+    }
+  } else {
+    // 彩虹分段带子模式
+    const halfW = 9;
+
+    // 阴影底层
+    ctx2.lineCap = 'round';
+    ctx2.lineJoin = 'round';
+    ctx2.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx2.lineWidth = 20;
+    ctx2.beginPath();
+    ctx2.moveTo(parts[0].x, parts[0].y + 5);
+    for (let i = 1; i < N; i++) ctx2.lineTo(parts[i].x, parts[i].y + 5);
+    ctx2.stroke();
+
+    // 主体：分段实色
+    const segPerColor = 12;
+    ctx2.lineCap = 'butt';
+    ctx2.lineWidth = halfW * 2;
+    for (let i = 0; i < N - 1; i++) {
+      const colorIdx = Math.floor(i / segPerColor) % candyColors.length;
+      ctx2.strokeStyle = candyColors[colorIdx];
+      ctx2.beginPath();
+      ctx2.moveTo(parts[i].x, parts[i].y);
+      ctx2.lineTo(parts[i + 1].x, parts[i + 1].y);
+      ctx2.stroke();
+    }
+
+    // 顶部高光（沿法线偏移，跟着带子弯）
+    ctx2.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx2.lineWidth = 3;
+    ctx2.lineCap = 'round';
+    ctx2.beginPath();
+    for (let i = 0; i < N; i++) {
+      const { nx, ny } = normalAt(i);
+      const x = parts[i].x + nx * (halfW - 3);
+      const y = parts[i].y + ny * (halfW - 3);
+      if (i === 0) ctx2.moveTo(x, y); else ctx2.lineTo(x, y);
+    }
+    ctx2.stroke();
+
+    // 底部暗边
+    ctx2.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx2.lineWidth = 2;
+    ctx2.beginPath();
+    for (let i = 0; i < N; i++) {
+      const { nx, ny } = normalAt(i);
+      const x = parts[i].x - nx * (halfW - 1);
+      const y = parts[i].y - ny * (halfW - 1);
+      if (i === 0) ctx2.moveTo(x, y); else ctx2.lineTo(x, y);
+    }
+    ctx2.stroke();
+  }
+}
+
+function drawPathLine(ctx2, ox = 0, oy = 0) {
+  ctx2.beginPath();
+  ctx2.moveTo(parts[0].x + ox, parts[0].y + oy);
+  for (let i = 1; i < N; i++) ctx2.lineTo(parts[i].x + ox, parts[i].y + oy);
+  ctx2.stroke();
+}
+
+function drawPencil(ctx2) {
+  ctx2.save();
+  ctx2.lineCap = 'round';
+  ctx2.lineJoin = 'round';
+
+  ctx2.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx2.lineWidth = 19;
+  drawPathLine(ctx2, 2.5, 5);
+
+  ctx2.strokeStyle = '#f2c46d';
+  ctx2.lineWidth = 17;
+  drawPathLine(ctx2);
+
+  ctx2.strokeStyle = '#d89b37';
+  ctx2.lineWidth = 3;
+  drawPathLine(ctx2, 0, 3.5);
+
+  ctx2.strokeStyle = 'rgba(255,245,200,0.68)';
+  ctx2.lineWidth = 3;
+  drawPathLine(ctx2, 0, -4.2);
+
+  ctx2.strokeStyle = '#3d4652';
+  ctx2.lineWidth = 5.5;
+  drawPathLine(ctx2);
+
+  ctx2.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx2.lineWidth = 1.2;
+  ctx2.setLineDash([1.5, 9]);
+  drawPathLine(ctx2, 0, -1.5);
+  ctx2.setLineDash([]);
+
+  drawPencilTip(ctx2, 0);
+  drawPencilEraser(ctx2, N - 1);
+  ctx2.restore();
+}
+
+function drawPencilTip(ctx2, idx) {
+  const p = parts[idx];
+  const ref = parts[Math.min(idx + 6, N - 1)];
+  const dx = p.x - ref.x, dy = p.y - ref.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const fx = dx / len, fy = dy / len;
+  const sx = -fy, sy = fx;
+  const baseX = p.x - fx * 7;
+  const baseY = p.y - fy * 7;
+  const tipX = p.x + fx * 14;
+  const tipY = p.y + fy * 14;
+
+  ctx2.fillStyle = '#e7b96a';
+  ctx2.beginPath();
+  ctx2.moveTo(baseX + sx * 9, baseY + sy * 9);
+  ctx2.lineTo(tipX, tipY);
+  ctx2.lineTo(baseX - sx * 9, baseY - sy * 9);
+  ctx2.closePath();
+  ctx2.fill();
+
+  ctx2.fillStyle = '#2f3640';
+  ctx2.beginPath();
+  ctx2.moveTo(baseX + sx * 3.6, baseY + sy * 3.6);
+  ctx2.lineTo(tipX, tipY);
+  ctx2.lineTo(baseX - sx * 3.6, baseY - sy * 3.6);
+  ctx2.closePath();
+  ctx2.fill();
+}
+
+function drawPencilEraser(ctx2, idx) {
+  const p = parts[idx];
+  const ref = parts[Math.max(idx - 6, 0)];
+  const dx = p.x - ref.x, dy = p.y - ref.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const fx = dx / len, fy = dy / len;
+  const sx = -fy, sy = fx;
+  const cx = p.x + fx * 7;
+  const cy = p.y + fy * 7;
+
+  ctx2.fillStyle = '#d6a048';
+  ctx2.beginPath();
+  ctx2.ellipse(cx - fx * 9, cy - fy * 9, 8, 11, Math.atan2(fy, fx), 0, Math.PI * 2);
+  ctx2.fill();
+
+  ctx2.fillStyle = '#ff8fb3';
+  ctx2.beginPath();
+  ctx2.ellipse(cx, cy, 9, 12, Math.atan2(fy, fx), 0, Math.PI * 2);
+  ctx2.fill();
+
+  ctx2.strokeStyle = 'rgba(255,255,255,0.38)';
+  ctx2.lineWidth = 1.5;
+  ctx2.beginPath();
+  ctx2.moveTo(cx + sx * 5 - fx * 5, cy + sy * 5 - fy * 5);
+  ctx2.lineTo(cx + sx * 5 + fx * 5, cy + sy * 5 + fy * 5);
+  ctx2.stroke();
+}
+
+function drawNeon(ctx2) {
+  ctx2.save();
+  ctx2.lineCap = 'round';
+  ctx2.lineJoin = 'round';
+
+  const grad = ctx2.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, '#54dbff');
+  grad.addColorStop(0.45, '#a29bfe');
+  grad.addColorStop(1, '#ff6b9d');
+
+  ctx2.globalCompositeOperation = 'lighter';
+  ctx2.shadowColor = '#54dbff';
+  ctx2.shadowBlur = 22;
+  ctx2.strokeStyle = 'rgba(84,219,255,0.34)';
+  ctx2.lineWidth = 34;
+  drawPathLine(ctx2);
+
+  ctx2.shadowColor = '#ff6b9d';
+  ctx2.shadowBlur = 28;
+  ctx2.strokeStyle = 'rgba(255,107,157,0.32)';
+  ctx2.lineWidth = 22;
+  drawPathLine(ctx2);
+
+  ctx2.globalCompositeOperation = 'source-over';
+  ctx2.shadowBlur = 0;
+  ctx2.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx2.lineWidth = 18;
+  drawPathLine(ctx2);
+
+  ctx2.strokeStyle = grad;
+  ctx2.lineWidth = 12;
+  drawPathLine(ctx2);
+
+  ctx2.strokeStyle = 'rgba(255,255,255,0.92)';
+  ctx2.lineWidth = 4;
+  drawPathLine(ctx2);
+
+  drawNeonCaps(ctx2);
+  ctx2.restore();
+}
+
+function drawNeonCaps(ctx2) {
+  for (const i of [0, N - 1]) {
+    const p = parts[i];
+    const glow = ctx2.createRadialGradient(p.x, p.y, 2, p.x, p.y, 22);
+    glow.addColorStop(0, 'rgba(255,255,255,0.95)');
+    glow.addColorStop(0.25, 'rgba(84,219,255,0.55)');
+    glow.addColorStop(1, 'rgba(84,219,255,0)');
+    ctx2.fillStyle = glow;
+    ctx2.beginPath();
+    ctx2.arc(p.x, p.y, 22, 0, Math.PI * 2);
+    ctx2.fill();
+
+    ctx2.fillStyle = '#f8fbff';
+    ctx2.beginPath();
+    ctx2.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx2.fill();
+  }
+}
+
+function drawWorm(ctx2) {
+  // 把带子分成若干"体节"，每节一对色（上半 / 下半），节中间最粗，节交界处收腰
+  const segPerSection = 9;
+  const maxHalfW = 13, minHalfW = 5;
+
+  // 预算每个粒子的半宽（节内 sin 曲线，节首/节末都是 minHalfW）
+  const widths = new Array(N);
+  const sectionIdx = new Array(N); // 每个粒子归属哪一节
+  let s = 0;
+  for (let start = 0; start < N - 1; start += segPerSection) {
+    const end = Math.min(start + segPerSection, N - 1);
+    for (let i = start; i <= end; i++) {
+      const t = (i - start) / (end - start);
+      widths[i] = minHalfW + (maxHalfW - minHalfW) * Math.sin(t * Math.PI);
+      sectionIdx[i] = s;
+    }
+    s++;
+  }
+
+  // 整体阴影（向下偏移的暗色 stroke）
+  ctx2.lineCap = 'round';
+  ctx2.lineJoin = 'round';
+  ctx2.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx2.lineWidth = maxHalfW * 2 + 4;
+  ctx2.beginPath();
+  ctx2.moveTo(parts[0].x, parts[0].y + 6);
+  for (let i = 1; i < N; i++) ctx2.lineTo(parts[i].x, parts[i].y + 6);
+  ctx2.stroke();
+
+  // 每节画两个填充多边形：上半色 + 下半色
+  for (let start = 0; start < N - 1; start += segPerSection) {
+    const end = Math.min(start + segPerSection, N - 1);
+    const [topColor, botColor] = wormPalette[sectionIdx[start] % wormPalette.length];
+
+    // 上半填充
+    ctx2.fillStyle = topColor;
+    ctx2.beginPath();
+    for (let i = start; i <= end; i++) {
+      const { nx, ny } = normalAt(i);
+      const x = parts[i].x + nx * widths[i];
+      const y = parts[i].y + ny * widths[i];
+      if (i === start) ctx2.moveTo(x, y); else ctx2.lineTo(x, y);
+    }
+    for (let i = end; i >= start; i--) {
+      ctx2.lineTo(parts[i].x, parts[i].y);
+    }
+    ctx2.closePath();
+    ctx2.fill();
+
+    // 下半填充
+    ctx2.fillStyle = botColor;
+    ctx2.beginPath();
+    for (let i = start; i <= end; i++) {
+      if (i === start) ctx2.moveTo(parts[i].x, parts[i].y);
+      else ctx2.lineTo(parts[i].x, parts[i].y);
+    }
+    for (let i = end; i >= start; i--) {
+      const { nx, ny } = normalAt(i);
+      const x = parts[i].x - nx * widths[i];
+      const y = parts[i].y - ny * widths[i];
+      ctx2.lineTo(x, y);
+    }
+    ctx2.closePath();
+    ctx2.fill();
+  }
+
+  // 节段中线接缝（淡淡一条暗线让上下双色交界更明显）
+  ctx2.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx2.lineWidth = 1;
+  ctx2.lineCap = 'round';
+  ctx2.beginPath();
+  ctx2.moveTo(parts[0].x, parts[0].y);
+  for (let i = 1; i < N; i++) ctx2.lineTo(parts[i].x, parts[i].y);
+  ctx2.stroke();
+
+  // 顶部高光带（沿法线偏移到接近上边界的位置）
+  ctx2.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx2.lineWidth = 2.5;
+  ctx2.beginPath();
+  for (let i = 0; i < N; i++) {
+    const { nx, ny } = normalAt(i);
+    const x = parts[i].x + nx * (widths[i] - 3);
+    const y = parts[i].y + ny * (widths[i] - 3);
+    if (i === 0) ctx2.moveTo(x, y); else ctx2.lineTo(x, y);
+  }
+  ctx2.stroke();
+
+  // 糖晶颗粒（酸糖虫表面的糖粒）
+  for (let i = 0; i < N; i++) {
+    const p = parts[i];
+    const { nx, ny } = normalAt(i);
+    // 沿带子方向的切向量（用于 aOff）
+    const ai = parts[Math.max(0, i - 1)];
+    const bi = parts[Math.min(N - 1, i + 1)];
+    const tx = (bi.x - ai.x) * 0.5;
+    const ty = (bi.y - ai.y) * 0.5;
+    for (const sg of p.sugars) {
+      const sx = p.x + nx * sg.nOff * widths[i] + tx * sg.aOff;
+      const sy = p.y + ny * sg.nOff * widths[i] + ty * sg.aOff;
+      // 糖晶颜色：偏白或偏黄米色
+      const tint = sg.tint > 0.7 ? '255,245,210' : '255,255,255';
+      ctx2.fillStyle = `rgba(${tint},${sg.alpha})`;
+      ctx2.beginPath();
+      ctx2.arc(sx, sy, sg.size, 0, Math.PI * 2);
+      ctx2.fill();
+    }
+  }
+
+  drawWormHead(ctx2);
+  drawWormTail(ctx2);
+}
+
+function drawWormHead(ctx2) {
+  // 算头部朝向：从带子里面的某点指向 parts[0]，向外
+  const head = parts[0];
+  const ref = parts[Math.min(5, N - 1)];
+  const fx = head.x - ref.x, fy = head.y - ref.y;
+  const len = Math.hypot(fx, fy) || 1;
+  const fwdX = fx / len, fwdY = fy / len;
+  const sideX = -fwdY, sideY = fwdX;
+
+  const headR = 17;
+  const cx = head.x + fwdX * 5;  // 头比第一节稍微往外突一点
+  const cy = head.y + fwdY * 5;
+
+  // 投影
+  ctx2.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx2.beginPath();
+  ctx2.arc(cx + 2, cy + 6, headR, 0, Math.PI * 2);
+  ctx2.fill();
+
+  // 头部主体（取第一节顶色 + 径向渐变）
+  const headColor = wormPalette[0][0];
+  const grad = ctx2.createRadialGradient(
+    cx - fwdX * 5 - sideX * 4, cy - fwdY * 5 - sideY * 4, 2,
+    cx, cy, headR
+  );
+  grad.addColorStop(0, lighten(headColor, 0.35));
+  grad.addColorStop(0.7, headColor);
+  grad.addColorStop(1, darken(headColor, 0.18));
+  ctx2.fillStyle = grad;
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, headR, 0, Math.PI * 2);
+  ctx2.fill();
+
+  // 触角（先画，被头部边缘自然遮住根部）
+  ctx2.strokeStyle = darken(headColor, 0.25);
+  ctx2.lineWidth = 2.2;
+  ctx2.lineCap = 'round';
+  for (const sgn of [-1, 1]) {
+    const baseX = cx + sideX * sgn * (headR * 0.55) + fwdX * (-headR * 0.25);
+    const baseY = cy + sideY * sgn * (headR * 0.55) + fwdY * (-headR * 0.25);
+    const tipX = baseX + sideX * sgn * 6 + fwdX * (-11);
+    const tipY = baseY + sideY * sgn * 6 + fwdY * (-11);
+    ctx2.beginPath();
+    ctx2.moveTo(baseX, baseY);
+    ctx2.quadraticCurveTo(
+      baseX + fwdX * (-3) + sideX * sgn * 0.5,
+      baseY + fwdY * (-3) + sideY * sgn * 0.5,
+      tipX, tipY
+    );
+    ctx2.stroke();
+    // 触角小球
+    ctx2.fillStyle = lighten(headColor, 0.15);
+    ctx2.beginPath();
+    ctx2.arc(tipX, tipY, 2.8, 0, Math.PI * 2);
+    ctx2.fill();
+    ctx2.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx2.beginPath();
+    ctx2.arc(tipX - 0.8, tipY - 0.8, 1, 0, Math.PI * 2);
+    ctx2.fill();
+  }
+
+  // 眼睛（瞳孔追鼠标）
+  const eyeFwd = headR * 0.3;
+  const eyeSpread = headR * 0.45;
+  const eyeR = 4.8;
+  for (const sgn of [-1, 1]) {
+    const ex = cx + fwdX * eyeFwd + sideX * sgn * eyeSpread;
+    const ey = cy + fwdY * eyeFwd + sideY * sgn * eyeSpread;
+
+    ctx2.fillStyle = '#fff';
+    ctx2.beginPath();
+    ctx2.arc(ex, ey, eyeR, 0, Math.PI * 2);
+    ctx2.fill();
+
+    let pdx = fwdX, pdy = fwdY;
+    if (mouse.inside) {
+      const dx = mouse.x - ex, dy = mouse.y - ey;
+      const md = Math.hypot(dx, dy) || 1;
+      pdx = dx / md; pdy = dy / md;
+    }
+    const pupX = ex + pdx * 2;
+    const pupY = ey + pdy * 2;
+    ctx2.fillStyle = '#1a1a1a';
+    ctx2.beginPath();
+    ctx2.arc(pupX, pupY, 2.5, 0, Math.PI * 2);
+    ctx2.fill();
+    ctx2.fillStyle = '#fff';
+    ctx2.beginPath();
+    ctx2.arc(pupX - 0.9, pupY - 0.9, 0.95, 0, Math.PI * 2);
+    ctx2.fill();
+  }
+
+  // 笑嘴（沿头部正面下半画一道弧）
+  const mFwd = headR * 0.55;
+  const mWidth = headR * 0.32;
+  const mx = cx + fwdX * mFwd;
+  const my = cy + fwdY * mFwd;
+  ctx2.strokeStyle = 'rgba(40,20,10,0.85)';
+  ctx2.lineWidth = 2;
+  ctx2.lineCap = 'round';
+  ctx2.beginPath();
+  ctx2.moveTo(mx + sideX * mWidth, my + sideY * mWidth);
+  ctx2.quadraticCurveTo(
+    mx + fwdX * 4.5,
+    my + fwdY * 4.5,
+    mx - sideX * mWidth, my - sideY * mWidth
+  );
+  ctx2.stroke();
+
+  // 腮红（两团淡淡的粉）
+  ctx2.fillStyle = 'rgba(255, 105, 140, 0.35)';
+  for (const sgn of [-1, 1]) {
+    const bx = cx + fwdX * (headR * 0.5) + sideX * sgn * (headR * 0.7);
+    const by = cy + fwdY * (headR * 0.5) + sideY * sgn * (headR * 0.7);
+    ctx2.beginPath();
+    ctx2.arc(bx, by, 3.2, 0, Math.PI * 2);
+    ctx2.fill();
+  }
+}
+
+function drawWormTail(ctx2) {
+  // 尾巴：在最后一个粒子处画一个收尖的小圆球
+  const tail = parts[N - 1];
+  const ref = parts[Math.max(0, N - 6)];
+  const fx = tail.x - ref.x, fy = tail.y - ref.y;
+  const len = Math.hypot(fx, fy) || 1;
+  const fwdX = fx / len, fwdY = fy / len;
+
+  const tailR = 7;
+  const cx = tail.x + fwdX * 3;
+  const cy = tail.y + fwdY * 3;
+
+  // 投影
+  ctx2.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx2.beginPath();
+  ctx2.arc(cx + 1.5, cy + 4, tailR, 0, Math.PI * 2);
+  ctx2.fill();
+
+  // 尾尖（用最后一节的色）
+  const tailColor = wormPalette[(Math.ceil((N - 1) / 9) - 1) % wormPalette.length][1];
+  ctx2.fillStyle = tailColor;
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, tailR, 0, Math.PI * 2);
+  ctx2.fill();
+
+  // 高光
+  ctx2.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx2.beginPath();
+  ctx2.arc(cx - 2, cy - 2, 2.5, 0, Math.PI * 2);
+  ctx2.fill();
+}
+
+function lighten(hex, amt) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgb(${Math.round(r + (255 - r) * amt)}, ${Math.round(g + (255 - g) * amt)}, ${Math.round(b + (255 - b) * amt)})`;
+}
+function darken(hex, amt) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgb(${Math.round(r * (1 - amt))}, ${Math.round(g * (1 - amt))}, ${Math.round(b * (1 - amt))})`;
+}
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+}
+
+function drawBursts(dt) {
+  for (const list of [pinBursts, passBursts]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const p = list[i];
+      p.age += dt;
+      if (p.age >= p.life) {
+        list.splice(i, 1);
+        continue;
+      }
+      p.vy += 4.8 * dt;
+      p.x += p.vx * 60 * dt;
+      p.y += p.vy * 60 * dt;
+      const alpha = 1 - p.age / p.life;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * (0.7 + alpha * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawScoreToast(dt) {
+  const toast = game.scoreToast;
+  if (!toast) return;
+  toast.age += dt;
+  if (toast.age >= toast.life) {
+    game.scoreToast = null;
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const t = toast.age / toast.life;
+  const y = toast.y - t * 34;
+  const alpha = Math.sin((1 - t) * Math.PI * 0.5);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = '800 34px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(10,14,20,0.75)';
+  ctx.fillStyle = '#ffd93d';
+  ctx.strokeText(toast.text, toast.x, y);
+  ctx.fillText(toast.text, toast.x, y);
+  ctx.restore();
+}
+
+function draw() {
+  const showTrail = document.getElementById('trail').checked;
+
+  if (showTrail) {
+    tctx.fillStyle = 'rgba(10,14,20,0.04)';
+    tctx.fillRect(0, 0, W, H);
+    drawRibbonTo(tctx);
+    ctx.fillStyle = '#0a0e14';
+    ctx.fillRect(0, 0, W, H);
+    drawGhost();
+    ctx.drawImage(trailLayer, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#0a0e14';
+    ctx.fillRect(0, 0, W, H);
+    drawGhost();
+    drawRibbonTo(ctx);
+  }
+
+  drawBursts(frameDt);
+  drawScoreToast(frameDt);
+
+  // 端点白色锚点（毛毛虫模式下被脑袋/尾巴自然遮住，不画）
+  const isWorm = document.getElementById('style').value === 'worm';
+  if (!isWorm) {
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#0a0e14';
+    ctx.lineWidth = 2;
+    for (const i of [0, N - 1]) {
+      ctx.beginPath();
+      ctx.arc(parts[i].x, parts[i].y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // 用户钉点（红色小圆点）
+  for (let i = 1; i < N - 1; i++) {
+    if (parts[i].pinned) {
+      ctx.fillStyle = '#ff4757';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(parts[i].x, parts[i].y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(parts[i].x, parts[i].y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // hover 预览圈：鼠标在 canvas 上但未拖动时，画出"点这能钉"的虚线圈
+  if (mouse.inside && !mouse.down && !game.ended) {
+    const hi = findToggleTarget(mouse.x, mouse.y);
+    if (hi >= 0) {
+      const p = parts[hi];
+      const willUnpin = p.pinned;
+      const blocked = !willUnpin && game.pinsLeft <= 0;
+      // 描色：解钉 = 橙，新钉 = 白，没钉子用 = 红
+      const stroke = blocked ? 'rgba(255,71,87,0.85)' : willUnpin ? 'rgba(255,165,2,0.95)' : 'rgba(255,255,255,0.9)';
+      const fill   = blocked ? 'rgba(255,71,87,0.18)' : willUnpin ? 'rgba(255,165,2,0.22)' : 'rgba(255,255,255,0.18)';
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  if (document.getElementById('debugPreview').checked) {
+    drawDebugMask();
+  }
+
+  // 抓握指示：被捏住的粒子周围画一个绿色光环 + 一条到鼠标的虚线（说明"这点跟手"）
+  if (grabIdx > 0 && grabIdx < N - 1) {
+    const p = parts[grabIdx];
+    ctx.strokeStyle = 'rgba(46,213,115,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 13, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(46,213,115,0.35)';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(mouse.x, mouse.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+let lastTime = performance.now();
+let frameDt = 0;
+function loop() {
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+  frameDt = dt;
+  step();
+  updateGame(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
