@@ -356,7 +356,7 @@
   </div>
 </div>
 
-<div class="hint">点 = 钉点 · 拖 = 拽住一段 · 点已钉处 = 解开（钉子返还） · 字母 40% / 单词 30% 持续 0.5s 过关</div>
+<div class="hint">点 = 钉点 · 拖 = 拽住一段 · 点已钉处 = 解开（钉子返还） · 字母 / 单词 40% 持续 0.5s 过关</div>
 
 <script>
 const cv = document.getElementById('cv');
@@ -1372,7 +1372,7 @@ function setMode(mode) {
 }
 
 function starsForScore(score) {
-  const thresholds = game.mode === 'word' ? [0.30, 0.42, 0.55] : [0.40, 0.55, 0.70];
+  const thresholds = [0.40, 0.55, 0.70];
   if (score >= thresholds[2]) return 3;
   if (score >= thresholds[1]) return 2;
   if (score >= thresholds[0]) return 1;
@@ -1693,7 +1693,7 @@ function updateGame(dt) {
   if (game.passed || game.ended) return;
   renderRibbonMask();
   game.score = computeScore();
-  const passThreshold = game.mode === 'word' ? 0.30 : 0.40;
+  const passThreshold = 0.40;
   if (game.hasInteracted && game.score >= passThreshold) {
     game.holdTime += dt;
     if (game.holdTime >= 0.5) {
@@ -1739,7 +1739,7 @@ function updateHUD() {
   document.getElementById('hudFill').style.width = Math.round(game.score * 100) + '%';
   document.getElementById('hudPins').textContent = game.pinsLeft;
   document.getElementById('hudStars').textContent = game.starsTotal + (game.pendingStars ? `+${game.pendingStars}` : '');
-  document.getElementById('hudThreshold').textContent = (game.mode === 'word' ? 30 : 40) + '%';
+  document.getElementById('hudThreshold').textContent = '40%';
   const wrap = document.getElementById('hudLevelsWrap');
   if (game.mode === 'word' && game.words) {
     wrap.innerHTML = `🏆 已拼 <b id="hudLevels">${game.levelsCleared}/${game.words.length}</b> 单词`;
