@@ -236,6 +236,107 @@
     font-family: inherit;
   }
   .end-card button:hover { background: #2ea043; }
+  .help-button {
+    position: fixed; top: 16px; right: 16px;
+    z-index: 30;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(15,20,25,0.78);
+    color: #ffd93d;
+    font-size: 22px; font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .help-button:hover { background: rgba(255,217,61,0.14); color: #fff; }
+  .tutorial {
+    position: fixed; inset: 0;
+    z-index: 60;
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px;
+    background: rgba(7,10,15,0.76);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .tutorial.hidden { display: none; }
+  .tutorial-card {
+    width: min(560px, 100%);
+    background: rgba(20,27,37,0.97);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+  }
+  .tutorial-title {
+    margin: 0 0 6px;
+    color: #ffd93d;
+    font-size: 24px; font-weight: 850;
+    letter-spacing: 0;
+  }
+  .tutorial-sub {
+    margin: 0 0 18px;
+    color: #9da7b3;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .tutorial-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .tutorial-step {
+    min-height: 86px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .tutorial-step b {
+    display: block;
+    margin-bottom: 5px;
+    color: #fff;
+    font-size: 14px;
+  }
+  .tutorial-step span {
+    display: block;
+    color: #aeb8c4;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .tutorial-note {
+    margin: 0 0 18px;
+    padding: 10px 12px;
+    border-left: 3px solid #ffd93d;
+    background: rgba(255,217,61,0.08);
+    color: #d0d7de;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .tutorial-actions {
+    display: flex; justify-content: flex-end; gap: 10px;
+  }
+  .tutorial-actions button {
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 7px;
+    padding: 9px 16px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .tutorial-actions .secondary {
+    background: rgba(255,255,255,0.07);
+    color: #b8c1cc;
+  }
+  .tutorial-actions .primary {
+    border-color: rgba(255,217,61,0.55);
+    background: rgba(255,217,61,0.18);
+    color: #ffd93d;
+    font-weight: 750;
+  }
 
   /* ============ 触屏 / 平板适配 ============ */
   @media (pointer: coarse), (max-width: 900px) {
@@ -282,6 +383,12 @@
     .end-card .end-title { font-size: 24px; }
     .end-card .end-stat b { font-size: 30px; }
     .end-card button { padding: 12px 36px; font-size: 14px; }
+    .help-button {
+      top: max(10px, env(safe-area-inset-top, 10px));
+      right: 10px;
+      width: 40px; height: 40px;
+      font-size: 21px;
+    }
   }
 
   /* 窄屏（手机竖屏）：进一步紧凑 */
@@ -301,11 +408,20 @@
     .hud-actions { margin-top: 6px; gap: 6px; }
     .hud-actions button { padding: 6px 10px; font-size: 11px; }
     .hint { display: none; }
+    .tutorial { align-items: flex-end; padding: 10px; }
+    .tutorial-card { padding: 18px; border-radius: 12px; }
+    .tutorial-title { font-size: 21px; }
+    .tutorial-sub { font-size: 12.5px; margin-bottom: 14px; }
+    .tutorial-steps { grid-template-columns: 1fr; gap: 8px; }
+    .tutorial-step { min-height: 0; padding: 10px; }
+    .tutorial-actions { justify-content: stretch; }
+    .tutorial-actions button { flex: 1; padding: 10px 12px; }
   }
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
+<button class="help-button" onclick="showTutorial(true)" aria-label="打开玩法说明">?</button>
 
 <div class="panel" id="panel">
   <h3 onclick="document.getElementById('panel').classList.toggle('open')">🐛 字母毛毛虫</h3>
@@ -343,6 +459,36 @@
   </div>
 </div>
 
+<div id="tutorial" class="tutorial hidden">
+  <div class="tutorial-card">
+    <h2 class="tutorial-title">怎么玩 Ribbon</h2>
+    <p class="tutorial-sub">目标是把一根彩色带子拗成屏幕上的字母或单词。越像字母，分数越高。</p>
+    <div class="tutorial-steps">
+      <div class="tutorial-step">
+        <b>1. 拖动带子</b>
+        <span>按住带子的一段拖动，让它贴近黄色虚线字母。</span>
+      </div>
+      <div class="tutorial-step">
+        <b>2. 点一下放钉子</b>
+        <span>轻点带子会固定一个点；再点已固定的位置可以解开，钉子会返还。</span>
+      </div>
+      <div class="tutorial-step">
+        <b>3. 看相似度</b>
+        <span>到 40% 并保持 0.5 秒就过关。乱甩到字母外面会扣分。</span>
+      </div>
+      <div class="tutorial-step">
+        <b>4. 单词模式</b>
+        <span>先看英文，再看右边中文意思。重点是每个字母都要清楚。</span>
+      </div>
+    </div>
+    <p class="tutorial-note">小技巧：先用少量钉子固定转角，再慢慢拖弧线。钉子用完了也没关系，可以点旧钉子取回来。</p>
+    <div class="tutorial-actions">
+      <button class="secondary" onclick="hideTutorial(false)">稍后再看</button>
+      <button class="primary" onclick="hideTutorial(true)">开始玩</button>
+    </div>
+  </div>
+</div>
+
 <div id="endScreen" class="end-screen hidden">
   <div id="endCard" class="end-card">
     <div id="endTitle" class="end-title">游戏结束</div>
@@ -362,6 +508,37 @@
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let W, H;
+
+const TUTORIAL_KEY = 'ribbonTutorialSeen.v1';
+
+function showTutorial(manual = false) {
+  const el = document.getElementById('tutorial');
+  if (!el) return;
+  el.classList.remove('hidden');
+  if (manual) el.dataset.manual = '1';
+}
+
+function hideTutorial(markSeen) {
+  const el = document.getElementById('tutorial');
+  if (el) el.classList.add('hidden');
+  if (markSeen) {
+    try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch (_) {}
+  }
+}
+
+function maybeShowTutorial() {
+  try {
+    if (localStorage.getItem(TUTORIAL_KEY) === '1') return;
+  } catch (_) {}
+  setTimeout(() => showTutorial(false), 450);
+}
+
+document.getElementById('tutorial').addEventListener('click', e => {
+  if (e.target.id === 'tutorial') hideTutorial(false);
+});
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') hideTutorial(false);
+});
 
 function resize() {
   const dpr = window.devicePixelRatio || 1;
@@ -2677,6 +2854,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 loop();
+maybeShowTutorial();
 </script>
 </body>
 </html>
